@@ -20,6 +20,22 @@ class Time_Signature(object):
                   self.time_step, self.numerator, self.denominator, self.beat_division_factors)+"\n}"
         return rep
 
+    def __eq__(self, other):
+        # Make sure the types are the same
+        assert isinstance(other, Time_Signature), "Expected a Time_Signature Instance but received {}".format(
+            type(other))
+
+        # ignore the start time index of time_signatures and check whether other fields are equal
+        is_eq = all([
+            self.numerator == other.numerator,
+            self.denominator == other.denominator,
+            self.beat_division_factors == other.beat_division_factors
+        ])
+        return is_eq
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     @property
     def time_step(self):
         return self.__time_step
@@ -143,6 +159,17 @@ class Tempo(object):
         for key in self.__dict__.keys():
             fields_available.append(True) if self.__dict__[key] is not None else fields_available.append(False)
         return all(fields_available)
+
+    def __eq__(self, other):
+        # Make sure the types are the same
+        assert isinstance(other, Tempo), "Expected a Tempo Instance but received {}".format(
+            type(other))
+
+        # ignore the start time index of time_signatures and check whether qpms are equal
+        return self.qpm == other.qpm
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 def is_power_of_two(n):

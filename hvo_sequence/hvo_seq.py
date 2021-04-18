@@ -3,7 +3,7 @@ import note_seq
 from note_seq.protobuf import music_pb2
 import soundfile as sf
 from bokeh.plotting import output_file, show, save
-from bokeh.models import Span
+from bokeh.models import Span, Label
 import warnings
 
 from hvo_sequence.utils import is_power_of_two, create_grid_for_n_bars, find_pitch_and_tag
@@ -30,6 +30,19 @@ class HVO_Sequence(object):
         # NOTE: DO NOT MODIFY THE BELOW MANGLED VARIABLES DIRECTLY
         #       RATHER USE THE PROPERTY GETTER AND SETTERS TO ENSURE
         #       DATATYPE CONSISTENCY
+
+        """
+        ADD VERSION ACCORDING TO: https://semver.org/
+        
+        Given a version number MAJOR.MINOR.PATCH, increment the:
+        
+        MAJOR version when you make incompatible API changes,
+        MINOR version when you add functionality in a backwards compatible manner, and
+        PATCH version when you make backwards compatible bug fixes.
+        """
+
+        self.__version = "0.0.1"
+
         self.__time_signatures = list()
         self.__tempos = list()
         self.__drum_mapping = None
@@ -42,6 +55,10 @@ class HVO_Sequence(object):
     #   ----------------------------------------------------------------------
     #   Property getters and setter wrappers for ESSENTIAL class variables
     #   ----------------------------------------------------------------------
+
+    @property
+    def __version__(self):
+        return self.__version
 
     @property
     def time_signatures(self):
@@ -175,6 +192,24 @@ class HVO_Sequence(object):
             return list(np.unique(time_regions))
 
     @property
+    def tempo_consistent_segment_lower_bounds(self):
+        boundaries = self.tempo_consistent_segment_boundaries
+        if boundaries is not None:
+            return boundaries[:-1]
+        else:
+            return None
+
+    @property
+    def tempo_consistent_segment_upper_bounds(self):
+        boundaries = self.tempo_consistent_segment_boundaries
+        if boundaries is not None and self.hvo is not None:
+            boundaries = boundaries[1:]
+            boundaries[-1] = len(self.hvo)
+            return boundaries
+        else:
+            return None
+
+    @property
     def time_signature_consistent_segment_boundaries(self):
         #   Returns time boundaries within which the time signature is constant
         #   upper bound (infinite) is always at 100000 seconds
@@ -188,11 +223,29 @@ class HVO_Sequence(object):
             warnings.warn("Can't carry out request as Time Signatures are not specified")
             return None
         else:
-            time_regions = [0, 100000]      # 100000 to denote infinite
+            time_regions = [0, 100000]  # 100000 to denote infinite
             for ix, time_signature in enumerate(self.time_signatures):
                 if ix > 0:  # Force 1st tempo to be at 0 even if doesn't start at the very beginning
                     time_regions.append(time_signature.time_step)
             return list(np.unique(time_regions))
+
+    @property
+    def time_signature_consistent_segment_lower_bounds(self):
+        boundaries = self.time_signature_consistent_segment_boundaries
+        if boundaries is not None:
+            return boundaries[:-1]
+        else:
+            return None
+
+    @property
+    def time_signature_consistent_segment_upper_bounds(self):
+        boundaries = self.time_signature_consistent_segment_boundaries
+        if boundaries is not None and self.hvo is not None:
+            boundaries = boundaries[1:]
+            boundaries[-1] = len(self.hvo)
+            return boundaries
+        else:
+            return None
 
     @property
     def segment_boundaries(self):
@@ -213,22 +266,6 @@ class HVO_Sequence(object):
             _time_regions.extend(self.tempo_consistent_segment_boundaries)
             _time_regions.extend(self.time_signature_consistent_segment_boundaries)
             return list(np.unique(_time_regions))
-
-    @property
-    def tempo_consistent_segment_lower_bounds(self):
-        boundaries = self.tempo_consistent_segment_boundaries
-        if boundaries is not None:
-            return boundaries[:-1]
-        else:
-            return None
-
-    @property
-    def time_signature_consistent_segment_lower_bounds(self):
-        boundaries = self.time_signature_consistent_segment_boundaries
-        if boundaries is not None:
-            return boundaries[:-1]
-        else:
-            return None
 
     @property
     def segment_lower_bounds(self):
@@ -594,25 +631,12 @@ class HVO_Sequence(object):
                           self.is_tempos_available(print_missing=True),
                           self.is_time_signatures_available(print_missing=True)])
 
-        if calculable:
-            major_grid_line_indices = list()
-            minor_grid_line_indices = list()
-
-            # if a grid line index is divisible by the number of steps per beat, it is major (i.e. beat position)
-            for grid_line_index in range(self.total_number_of_steps):
-
-                segment_ix = self.segment_index_at_step(grid_line_index)
-                position_in_segment = self.step_position_from_time_signature_segment_beginning(grid_line_index)
-
-                if position_in_segment % self.steps_per_beat_per_segments[segment_ix] == 0:
-                    major_grid_line_indices.append(grid_line_index)
-                else:
-                    minor_grid_line_indices.append(grid_line_index)
-
-            return major_grid_line_indices, minor_grid_line_indices
-        else:
+        if not calculable:
             warnings.warn("Above fields are required for calculating major/minor grid line positions")
             return None, None
+
+        grids_with_types = self.grid_lines_with_types
+        return grids_with_types["major_grid_line_indices"], grids_with_types["minor_grid_line_indices"]
 
     @property
     def major_and_minor_grid_lines(self):
@@ -620,53 +644,44 @@ class HVO_Sequence(object):
         # Major lines lie on the beginning of each beat --> multiples of number of steps in each beat
         # Minor lines lie in between major gridlines    --> not multiples of number of steps in each beat
 
-        major_grid_line_indices, minor_grid_line_indices = self.major_and_minor_grid_line_indices
+        calculable = all([self.is_hvo_score_available(print_missing=True),
+                          self.is_tempos_available(print_missing=True),
+                          self.is_time_signatures_available(print_missing=True)])
 
-        if major_grid_line_indices is not None and minor_grid_line_indices is not None:
-
-            # Get grid time stamps for the grid indices
-            major_grid_lines = self.grid_lines[major_grid_line_indices]
-            minor_grid_lines = self.grid_lines[minor_grid_line_indices]
-
-            return major_grid_lines, minor_grid_lines
-        else:
+        if not calculable:
             warnings.warn("Above fields are required for calculating major/minor grid line positions")
             return None, None
+
+        grids_with_types = self.grid_lines_with_types
+        return grids_with_types["major_grid_lines"], grids_with_types["minor_grid_lines"]
 
     @property
     def downbeat_indices(self):
         # Returns the indices of the grid_lines where a downbeat occurs.
-        major_grid_line_indices, minor_grid_line_indices = self.major_and_minor_grid_line_indices
+        calculable = all([self.is_hvo_score_available(print_missing=True),
+                          self.is_tempos_available(print_missing=True),
+                          self.is_time_signatures_available(print_missing=True)])
 
-        if major_grid_line_indices is not None and minor_grid_line_indices is not None:
-            # Get grid time stamps for the grid indices
-            steps_per_beat_per_segments = self.steps_per_beat_per_segments
-            _, time_signatures = self.tempos_and_time_signatures_per_segments
+        if not calculable:
+            warnings.warn("Above fields are required for calculating downbeat grid line positions")
+            return None, None
 
-            downbeat_indices = list()
-
-            for major_grid_line_ix in major_grid_line_indices:
-                segment_ix = self.segment_index_at_step(major_grid_line_ix)
-                downbeat_indices.append(int(segment_ix/time_signatures[segment_ix].numerator))
-
-            return downbeat_indices
-
-        else:
-            warnings.warn("Above fields are required for calculating downbeat positions (i.e. measure boundaries")
-            return None
+        grids_with_types = self.grid_lines_with_types
+        return grids_with_types["downbeat_grid_line_indices"]
 
     @property
     def downbeat_positions(self):
-        # Returns the time stamps for the downbeat positions in the grid
-        downbeat_indices = self.downbeat_indices
+        # Returns the indices of the grid_lines where a downbeat occurs.
+        calculable = all([self.is_hvo_score_available(print_missing=True),
+                          self.is_tempos_available(print_missing=True),
+                          self.is_time_signatures_available(print_missing=True)])
 
-        if downbeat_indices is not None:
-            # Get grid time stamps for the downbeat indices
-            downbeat_positions = self.grid_lines[downbeat_indices]
-            return downbeat_positions
-        else:
-            warnings.warn("Above fields are required for calculating downbeat positions (i.e. measure boundaries")
-            return None
+        if not calculable:
+            warnings.warn("Above fields are required for calculating downbeat grid line positions")
+            return None, None
+
+        grids_with_types = self.grid_lines_with_types
+        return grids_with_types["downbeat_grid_lines"]
 
     @property
     def starting_measure_indices(self):
@@ -679,46 +694,81 @@ class HVO_Sequence(object):
         return self.downbeat_positions
 
     @property
+    def grid_lines_with_types(self):
+
+        """
+
+        """
+        major_grid_lines = [0]       # Happens at the beggining of beats! --> Beat Pos depends on Time_signature only (If Time_sig changes before an expected beat position, force reset beat position)
+        minor_grid_lines = []       # Any Index that's not major
+        downbeat_grid_lines = [0]    # every nth major_ix where n is time sig numerator in segment (downbeat always measured from the beginning of a time signature time stamp)
+
+        major_grid_line_indices = [0]
+        minor_grid_line_indices = []
+        downbeat_grid_line_indices = [0]
+
+        grid_lines = [0]
+
+        ts_consistent_lbs = self.time_signature_consistent_segment_lower_bounds
+        ts_consistent_ubs = self.time_signature_consistent_segment_upper_bounds
+        print("ts_consistent_lbs: ", ts_consistent_lbs)
+
+        current_step = 0
+        for ts_consistent_seg_ix, (ts_lb, ts_up) in enumerate(zip(ts_consistent_lbs, ts_consistent_ubs)):
+            major_grid_lines.append(grid_lines[-1])
+            major_grid_line_indices.append(len(grid_lines))
+            downbeat_grid_lines.append(grid_lines[-1])
+            downbeat_grid_line_indices.append(len(grid_lines))
+
+            # Figure out num_steps in each beat as well as the ratios of beat_dur for each time increase
+            time_sig = self.time_signatures[self.time_signature_segment_index_at_step(ts_lb)]
+
+            delta_t_ratios = np.array([])
+            for beat_div_factor in time_sig.beat_division_factors:
+                delta_t_ratios = np.append(delta_t_ratios, np.arange(0, 1, 1.0 / beat_div_factor))
+            delta_t_ratios = np.unique(np.append(delta_t_ratios, 1))
+            delta_t_ratios = delta_t_ratios[1:] - delta_t_ratios[:-1]
+            steps_per_beat_in_seg = len(delta_t_ratios)
+
+            print("ts_lb, ts_up, ts_up - ts_lb", ts_lb, ts_up, ts_up - ts_lb, list(range(ts_lb - ts_lb, ts_up - ts_lb)))
+            for step_ix in range(ts_lb - ts_lb, ts_up - ts_lb):         # For each ts, re-start counting from 0
+                actual_step_ix = step_ix if ts_consistent_seg_ix == 0 else step_ix+len(grid_lines)-1
+                tempo = self.tempos[self.tempo_segment_index_at_step(actual_step_ix)]
+                beat_duration_at_step = (60.0 / tempo.qpm) * 4.0 / time_sig.denominator
+                grid_lines.append(grid_lines[-1] + delta_t_ratios[step_ix % steps_per_beat_in_seg] * \
+                                  beat_duration_at_step)
+                current_step = current_step + 1
+                if (step_ix+1) % (steps_per_beat_in_seg) == 0:
+                    major_grid_lines.append(grid_lines[-1])
+                    major_grid_line_indices.append(current_step)
+                    if (step_ix+1) % (time_sig.numerator*steps_per_beat_in_seg) == 0:
+                        downbeat_grid_lines.append(grid_lines[-1])
+                        downbeat_grid_line_indices.append(current_step)
+                else:
+                    minor_grid_lines.append(grid_lines[-1])
+                    minor_grid_line_indices.append(current_step)
+
+            print("len(grid_lines)", len(grid_lines))
+
+        output = {
+            "grid_lines": grid_lines,
+            "major_grid_lines": major_grid_lines,
+            "minor_grid_lines": minor_grid_lines,
+            "downbeat_grid_lines": downbeat_grid_lines,
+            "major_grid_line_indices": major_grid_line_indices,
+            "minor_grid_line_indices": minor_grid_line_indices,
+            "downbeat_grid_line_indices": downbeat_grid_line_indices
+        }
+
+        return output
+
+    @property
     def grid_lines(self):
-        # Creates the grid according to the features set for each tempo and time signature consistent segment
 
-        # Get the number of steps in each tempo and time signature consistent segment
-        n_steps_per_segments = self.steps_per_segments
+        """
 
-        # Get tempos and time signatures for each segment
-        tempos, time_signatures = self.tempos_and_time_signatures_per_segments
-
-        # Get and round up the number of bars per segments
-        n_bars_per_segments = np.ceil(self.n_bars_per_segments)
-
-        # Keep track of the initial position of each segment grid section
-        beginning_of_current_segment = 0
-
-        # Variable for the final grid lines
-        grid_lines = np.array([])
-
-        for segment_ix, n_steps_per_segment in enumerate(n_steps_per_segments):
-            # Create n-bars of grid lines
-            segment_grid_lines, beginning_of_next_segment = create_grid_for_n_bars(
-                n_bars=n_bars_per_segments[segment_ix],
-                time_signature=time_signatures[segment_ix],
-                tempo=tempos[segment_ix]
-            )
-
-            # Trim the grid to fit required number of steps, also shift lines to start at the beginning of segment
-            trimmed_moved_segment = segment_grid_lines[:n_steps_per_segment] + beginning_of_current_segment
-
-            # Set the beginning of next segment
-            if len(segment_grid_lines) > n_steps_per_segment:
-                # in case the time sig or tempo are changed before end of measure
-                # This ideally shouldn't happen but here for the sake of completeness
-                beginning_of_current_segment = segment_grid_lines[n_steps_per_segment]
-            else:
-                beginning_of_current_segment = beginning_of_next_segment
-
-            grid_lines = np.append(grid_lines, trimmed_moved_segment)
-
-        return grid_lines
+        """
+        return np.array(self.grid_lines_with_types["grid_lines"])
 
     #   ----------------------------------------------------------------------
     #   Utility methods to check whether required properties are
@@ -923,11 +973,21 @@ class HVO_Sequence(object):
         ns.total_time = self.total_len
 
         for tempo in self.tempos:
-            ns.tempos.add(qpm=tempo.qpm, time=self.grid_lines[tempo.time_step])
+            ns.tempos.add(
+                time=self.grid_lines[tempo.time_step],
+                qpm=tempo.qpm
+            )
+
+        for time_sig in self.time_signatures:
+            ns.time_signatures.add(
+                time=self.grid_lines[time_sig.time_step],
+                numerator=time_sig.numerator,
+                denominator=time_sig.denominator
+            )
 
         return ns
 
-    def save_hvo_to_midi(self, filename="misc/temp/temp.mid", midi_track_n=9):
+    def save_hvo_to_midi(self, filename="misc/temp.mid", midi_track_n=9):
         """
             Exports to a  midi file
 
@@ -952,7 +1012,7 @@ class HVO_Sequence(object):
     #   Utilities to Synthesize the hvo score
     #   --------------------------------------------------------------
 
-    def synthesize(self, sr=44100, sf_path="utils/soundfonts/Standard_Drum_Kit.sf2"):
+    def synthesize(self, sr=44100, sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2"):
         """
         Synthesizes the hvo_sequence to audio using a provided sound font
         @param sr:                          sample rate
@@ -971,8 +1031,8 @@ class HVO_Sequence(object):
         audio = pm.fluidsynth(fs=sr, sf2_path=sf_path)
         return audio
 
-    def save_audio(self, filename="misc/temp/temp.wav", sr=44100,
-                   sf_path="utils/soundfonts/Standard_Drum_Kit.sf2"):
+    def save_audio(self, filename="misc/temp.wav", sr=44100,
+                   sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2"):
         """
         Synthesizes and saves the hvo_sequence to audio using a provided sound font
         @param filename:                    filename/path used for saving the audio
@@ -997,7 +1057,13 @@ class HVO_Sequence(object):
     #   Utilities to plot the score
     #   --------------------------------------------------------------
 
-    def to_html_plot(self, filename="misc/temp/temp.html", show_figure=False):
+    def to_html_plot(self, filename="misc/temp.html", show_figure=False,
+                     show_tempo=True, tempo_font_size="8pt",
+                     show_time_signature=True, time_signature_font_size="8pt",
+                     minor_grid_color = "black", minor_line_width=0.1,
+                     major_grid_color = "blue", major_line_width=0.5,
+                     downbeat_color = "blue", downbeat_line_width=2,
+                     width=800, height=400):
         """
         Creates a bokeh plot of the hvo sequence
         @param filename:                    path to save the html plot
@@ -1032,51 +1098,60 @@ class HVO_Sequence(object):
         _html_fig.yaxis.ticker = list(unique_pitches)
         _html_fig.yaxis.major_label_overrides = dict(zip(unique_pitches, drum_tags))
 
+        """
+        ax2 = LinearAxis(x_range_name="foo", axis_label="blue circles")
+        ax2.axis_label_text_color = "navy"
+        _html_fig.add_layout(ax2, 'left')"""
+
         # Add beat and beat_division grid lines
         major_grid_lines, minor_grid_lines = self.major_and_minor_grid_lines
 
+        grid_lines = self.grid_lines
+
         for t in minor_grid_lines:
-            minor_grid_ = Span(location=t, dimension='height', line_color='black', line_width=.1)
+            minor_grid_ = Span(location=t, dimension='height',
+                               line_color=minor_grid_color, line_width=minor_line_width)
             _html_fig.add_layout(minor_grid_)
 
         for t in major_grid_lines:
-            major_grid_ = Span(location=t, dimension='height', line_color='blue', line_width=.5)
+            major_grid_ = Span(location=t, dimension='height',
+                               line_color=major_grid_color, line_width=major_line_width)
             _html_fig.add_layout(major_grid_)
 
         for t in self.starting_measure_positions:
-            major_grid_ = Span(location=t, dimension='height', line_color='blue', line_width=2)
-            _html_fig.add_layout(major_grid_)
+            downbeat_grid_ = Span(location=t, dimension='height',
+                                  line_color=downbeat_color, line_width=downbeat_line_width)
+            _html_fig.add_layout(downbeat_grid_)
+
+        if show_tempo:
+            tempo_lower_b = self.tempo_consistent_segment_lower_bounds
+            for ix, tempo in enumerate(self.tempos):
+                my_label = Label(x=grid_lines[tempo_lower_b[ix]], y=list(unique_pitches)[-1] + 2, text="qpm {:.1f}".format(tempo.qpm))
+                my_label.text_font_size=tempo_font_size
+                my_label.angle = 1.57
+                _html_fig.add_layout(my_label)
+
+        if show_time_signature:
+            time_signature_lower_b = self.time_signature_consistent_segment_lower_bounds
+            for ix, ts in enumerate(self.time_signatures):
+                my_label = Label(x=grid_lines[time_signature_lower_b[ix]], y=list(unique_pitches)[-1] + 0.5,
+                                 text="{}/{}".format(ts.numerator, ts.denominator))
+                my_label.text_font_size = time_signature_font_size
+                my_label.angle = 1.57
+                _html_fig.add_layout(my_label)
+
+        _html_fig.width = width
+        _html_fig.height = height
 
         # Plot the figure if requested
         if show_figure:
             show(_html_fig)
+
+
+
 
         # Save the plot
         output_file(filename)  # Set name used for saving the figure
         save(_html_fig)  # Save to file
 
         return _html_fig
-
-
-"""
-To do:
-    1. does have velocity variations?
-    2. does have utiming variations?
-    3. is performance?
-    4. Adjust qpm when changing time signature
-    5.  A. plot Measure boundaries √√√
-        B. Add a field to keep track of the starting measure position (compared to the 
-            longer pattern from where they have been extracted)
-    6. split large using smaller windows and overlap --> maybe better to use an external class
-    7. import directly from midi
-    8. add info field
-    9. Think about how to implement tempo change!
-    10. save score as png
-    11. Implement tempo change and signature change methods
-    12. Split at tempo change, split and time_sig change, split at meta change
-    13. Implement Appending sequences
-    14. Add mixed beat_division_factors 
-"""
-
-
-

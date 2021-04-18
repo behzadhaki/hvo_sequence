@@ -14,7 +14,7 @@ import pretty_midi
 if __name__ == '__main__':
 
     # indices = [192 , 242]
-    indices = 29    # 135
+    indices = 102    # 135
 
     # Note_sequence from midi
     #midi_data = pretty_midi.PrettyMIDI('test/misc/tempo_time_sig_changes.mid')
@@ -23,10 +23,10 @@ if __name__ == '__main__':
 
     # Test pickle loaders
     # 1. Load Note Sequence Pickle
-    ns = get_pickled_note_sequences("misc/note_sequence_data.obj", item_list=indices)
-    hvo_seq = note_sequence_to_hvo_sequence(ns, drum_mapping=ROLAND_REDUCED_MAPPING)
+    ns = get_pickled_note_sequences("test/misc/note_sequence_data.obj", item_list=indices)
+    hvo_seq = note_sequence_to_hvo_sequence(ns, drum_mapping=ROLAND_REDUCED_MAPPING, beat_division_factors=[8])
     hvo_seq.to_html_plot("./temp.html", show_figure=True)
-    hvo_seq.save_audio("./temp.wav", sf_path="soundfonts/Standard_Drum_Kit.sf2")
+    hvo_seq.save_audio("./temp.wav", sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2")
     # 2. Load HVO Pickle
     # hvo = get_pickled_hvos("test/misc/note_sequence_data.obj", item_list=indices)
 

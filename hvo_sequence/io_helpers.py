@@ -8,6 +8,7 @@ from hvo_sequence.utils import find_nearest, find_pitch_and_tag
 from hvo_sequence.custom_dtypes import Tempo, Time_Signature
 from hvo_sequence.hvo_seq import HVO_Sequence
 
+
 def note_sequence_to_hvo_sequence(ns, drum_mapping, beat_division_factors=[4], max_n_bars=None):
     """
             # Note_Sequence importer. Converts the note sequence to hvo format
@@ -69,80 +70,6 @@ def note_sequence_to_hvo_sequence(ns, drum_mapping, beat_division_factors=[4], m
         place_note_in_hvo(ns_note=ns_note, hvo=hvo_seq.hvo, grid=grid_lines, drum_mapping=drum_mapping)
 
     return hvo_seq
-
-
-
-
-
-
-
-
-
-
-
-
-
-    """convertible = list()
-    convertible.append(self.is_time_signatures_available(print_missing=True))
-    convertible.append(self.is_drum_mapping_available(print_missing=True))
-    if not all(convertible):
-        warnings.warn("Above fields are missing for initiating the HVO_Sequence from a NoteSequence score")
-        warnings.warn("Update the above before making the request again")
-        return None
-
-    # Grab the note_sequence signatures
-    signatures = list()
-
-    for time_sig in ns.time_signatures:
-        if time_sig.time:
-            time_s = time_sig.time
-
-        signatures.append(Time_Signature(time_sig.time, time_sig.numerator, time_sig.denominator,
-                                         beat_division_factors=beat_division_factors))
-"""
-    """signature_info = {
-        "time": ns.time_signatures[0].time,
-        "numerator": ns.time_signatures[0].numerator,           # AKA beats per bar
-        "denominator": ns.time_signatures[0].denominator
-    }
-    """
-    """
-    # Grab the note_sequence tempos
-    tempos = list()
-    qpm = ns.tempos[0].qpm
-
-    # Calculate the duration of each beat
-    beat_dur = (60.0 / qpm) * signature_info["denominator"] / 4.0
-
-    # Calculate the total length of sequence in seconds
-    if max_n_bars is not None:
-        max_len = max_n_bars * signature_info["numerator"] * beat_dur
-        total_len = min(max_len, max(ns.notes[-1].end_time, ns.total_time))
-    else:
-        total_len = max(ns.notes[-1].end_time, ns.total_time)
-
-    # Calculate the number of bars required to fit the sequence
-    n_bars = np.round(total_len / beat_dur * signature_info["numerator"])
-
-    # Create the grid time-stamps for hvo array
-    grid_info = create_grid(self.beat_division_factors, n_bars, signature_info["numerator"], beat_dur)
-
-    # Dimension at each time-step (3n) --> n hits, n velocities, and n utimings
-    dimension_at_time_step = 3 * len(self.drum_mapping.keys())
-
-    # Create empty hvo
-    hvo = np.zeros((grid_info["loc"].shape[0], dimension_at_time_step))
-
-    # Grab drum notes in note_sequence, and place each note in hvo array one-by-one
-    for ix, note in enumerate(ns.notes):
-        if note.is_drum:
-            hvo = place_note_in_hvo(note, hvo, grid_info["loc"], self.drum_mapping)
-
-    # Now that we've successfully reached here, we can safely update corresponding fields in the class
-    self.time_signature = signature_info
-    self.qpm = qpm
-    self.hvo = hvo
-    """
 
 
 def place_note_in_hvo(ns_note, hvo, grid, drum_mapping):
