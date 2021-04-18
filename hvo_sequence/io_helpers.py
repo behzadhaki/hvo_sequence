@@ -5,7 +5,6 @@ import numpy as np
 import pretty_midi
 
 from hvo_sequence.utils import find_nearest, find_pitch_and_tag
-from hvo_sequence.custom_dtypes import Tempo, Time_Signature
 from hvo_sequence.hvo_seq import HVO_Sequence
 
 
@@ -40,10 +39,12 @@ def note_sequence_to_hvo_sequence(ns, drum_mapping, beat_division_factors=[4], m
 
     for segment_ix, (lower_b, upper_b) in enumerate(zip(segment_lower_bounds, segment_upper_bounds)):
         ns_tempo, ns_time_sig = get_tempo_and_time_signature_at_step(lower_b)
-        beat_duration_in_segment = (60.0 / ns_tempo.qpm) * 4.0 / ns_time_sig.denominator
-        step_duration = beat_duration_in_segment/beat_division_factors[0]
-        segment_grid_lines = np.arange(lower_b, upper_b, step_duration)
-        grid_lines = np.append(grid_lines, segment_grid_lines)
+        segment_grid_lines = np.array([])
+        for beat_div in beat_division_factors:
+            beat_duration_in_segment = (60.0 / ns_tempo.qpm) * 4.0 / ns_time_sig.denominator
+            step_duration = beat_duration_in_segment/beat_div
+            segment_grid_lines = np.append(segment_grid_lines, np.arange(lower_b, upper_b, step_duration))
+        grid_lines = np.append(grid_lines, np.unique(segment_grid_lines))
 
     def snap_time_stamp_to_grid(time_stamp):
         time_step, _ = find_nearest(grid_lines, time_stamp)

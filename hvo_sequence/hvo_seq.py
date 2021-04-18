@@ -711,7 +711,6 @@ class HVO_Sequence(object):
 
         ts_consistent_lbs = self.time_signature_consistent_segment_lower_bounds
         ts_consistent_ubs = self.time_signature_consistent_segment_upper_bounds
-        print("ts_consistent_lbs: ", ts_consistent_lbs)
 
         current_step = 0
         for ts_consistent_seg_ix, (ts_lb, ts_up) in enumerate(zip(ts_consistent_lbs, ts_consistent_ubs)):
@@ -730,7 +729,6 @@ class HVO_Sequence(object):
             delta_t_ratios = delta_t_ratios[1:] - delta_t_ratios[:-1]
             steps_per_beat_in_seg = len(delta_t_ratios)
 
-            print("ts_lb, ts_up, ts_up - ts_lb", ts_lb, ts_up, ts_up - ts_lb, list(range(ts_lb - ts_lb, ts_up - ts_lb)))
             for step_ix in range(ts_lb - ts_lb, ts_up - ts_lb):         # For each ts, re-start counting from 0
                 actual_step_ix = step_ix if ts_consistent_seg_ix == 0 else step_ix+len(grid_lines)-1
                 tempo = self.tempos[self.tempo_segment_index_at_step(actual_step_ix)]
@@ -747,8 +745,6 @@ class HVO_Sequence(object):
                 else:
                     minor_grid_lines.append(grid_lines[-1])
                     minor_grid_line_indices.append(current_step)
-
-            print("len(grid_lines)", len(grid_lines))
 
         output = {
             "grid_lines": grid_lines,
