@@ -3,6 +3,7 @@ import note_seq
 from note_seq.protobuf import music_pb2
 import soundfile as sf
 from bokeh.plotting import output_file, show, save
+from bokeh.io import output_notebook
 from bokeh.models import Span, Label
 import warnings
 
@@ -834,76 +835,6 @@ class HVO_Sequence(object):
     #       1. NoteSequence, 2. HVO array, 3. Midi
     #   --------------------------------------------------------------
 
-    def from_note_sequence(self, ns, beat_division_factors=None, max_n_bars=None):
-        """
-        # Note_Sequence importer. Converts the note sequence to hvo format
-        @param ns:                  Note_Sequence drum score
-        @param max_n_bars:          maximum number of bars to import
-        @return:
-        """
-        convertible = list()
-        convertible.append(self.is_time_signatures_available(print_missing=True))
-        convertible.append(self.is_drum_mapping_available(print_missing=True))
-        if not all(convertible):
-            warnings.warn("Above fields are missing for initiating the HVO_Sequence from a NoteSequence score")
-            warnings.warn("Update the above before making the request again")
-            return None
-
-        # Grab the note_sequence signatures
-        signatures = list()
-
-        for time_sig in ns.time_signatures:
-            if time_sig.time:
-                time_s = time_sig.time
-
-            signatures.append(Time_Signature(time_sig.time, time_sig.numerator, time_sig.denominator,
-                                             beat_division_factors=beat_division_factors))
-
-        """signature_info = {
-            "time": ns.time_signatures[0].time,
-            "numerator": ns.time_signatures[0].numerator,           # AKA beats per bar
-            "denominator": ns.time_signatures[0].denominator
-        }
-        """
-        """
-        # Grab the note_sequence tempos
-        tempos = list()
-        qpm = ns.tempos[0].qpm
-
-        # Calculate the duration of each beat
-        beat_dur = (60.0 / qpm) * signature_info["denominator"] / 4.0
-
-        # Calculate the total length of sequence in seconds
-        if max_n_bars is not None:
-            max_len = max_n_bars * signature_info["numerator"] * beat_dur
-            total_len = min(max_len, max(ns.notes[-1].end_time, ns.total_time))
-        else:
-            total_len = max(ns.notes[-1].end_time, ns.total_time)
-
-        # Calculate the number of bars required to fit the sequence
-        n_bars = np.round(total_len / beat_dur * signature_info["numerator"])
-
-        # Create the grid time-stamps for hvo array
-        grid_info = create_grid(self.beat_division_factors, n_bars, signature_info["numerator"], beat_dur)
-
-        # Dimension at each time-step (3n) --> n hits, n velocities, and n utimings
-        dimension_at_time_step = 3 * len(self.drum_mapping.keys())
-
-        # Create empty hvo
-        hvo = np.zeros((grid_info["loc"].shape[0], dimension_at_time_step))
-
-        # Grab drum notes in note_sequence, and place each note in hvo array one-by-one
-        for ix, note in enumerate(ns.notes):
-            if note.is_drum:
-                hvo = place_note_in_hvo(note, hvo, grid_info["loc"], self.drum_mapping)
-
-        # Now that we've successfully reached here, we can safely update corresponding fields in the class
-        self.time_signature = signature_info
-        self.qpm = qpm
-        self.hvo = hvo
-        """
-        return self
-
     def to_note_sequence(self, midi_track_n=9):
         """
         Exports the hvo_sequence to a note_sequence object
@@ -1104,37 +1035,43 @@ class HVO_Sequence(object):
 
         grid_lines = self.grid_lines
 
+        minor_grid_ = []
         for t in minor_grid_lines:
-            minor_grid_ = Span(location=t, dimension='height',
-                               line_color=minor_grid_color, line_width=minor_line_width)
-            _html_fig.add_layout(minor_grid_)
+            minor_grid_.append(Span(location=t, dimension='height',
+                                    line_color=minor_grid_color, line_width=minor_line_width))
+            _html_fig.add_layout(minor_grid_[-1])
 
+        major_grid_ = []
         for t in major_grid_lines:
-            major_grid_ = Span(location=t, dimension='height',
-                               line_color=major_grid_color, line_width=major_line_width)
-            _html_fig.add_layout(major_grid_)
+            major_grid_.append(Span(location=t, dimension='height',
+                                    line_color=major_grid_color, line_width=major_line_width))
+            _html_fig.add_layout(major_grid_[-1])
 
+        downbeat_grid_ = []
         for t in self.starting_measure_positions:
-            downbeat_grid_ = Span(location=t, dimension='height',
-                                  line_color=downbeat_color, line_width=downbeat_line_width)
-            _html_fig.add_layout(downbeat_grid_)
+            downbeat_grid_.append(Span(location=t, dimension='height',
+                                       line_color=downbeat_color, line_width=downbeat_line_width))
+            _html_fig.add_layout(downbeat_grid_[-1])
 
         if show_tempo:
+            my_label = []
             tempo_lower_b = self.tempo_consistent_segment_lower_bounds
             for ix, tempo in enumerate(self.tempos):
-                my_label = Label(x=grid_lines[tempo_lower_b[ix]], y=list(unique_pitches)[-1] + 2, text="qpm {:.1f}".format(tempo.qpm))
-                my_label.text_font_size=tempo_font_size
-                my_label.angle = 1.57
-                _html_fig.add_layout(my_label)
+                my_label.append(Label(x=grid_lines[tempo_lower_b[ix]], y=list(unique_pitches)[-1] + 2,
+                                      text="qpm {:.1f}".format(tempo.qpm)))
+                my_label[-1].text_font_size=tempo_font_size
+                my_label[-1].angle = 1.57
+                _html_fig.add_layout(my_label[-1])
 
         if show_time_signature:
+            my_label2 = []
             time_signature_lower_b = self.time_signature_consistent_segment_lower_bounds
             for ix, ts in enumerate(self.time_signatures):
-                my_label = Label(x=grid_lines[time_signature_lower_b[ix]], y=list(unique_pitches)[-1] + 0.5,
-                                 text="{}/{}".format(ts.numerator, ts.denominator))
-                my_label.text_font_size = time_signature_font_size
-                my_label.angle = 1.57
-                _html_fig.add_layout(my_label)
+                my_label2.append(Label(x=grid_lines[time_signature_lower_b[ix]], y=list(unique_pitches)[-1] + 0.5,
+                                       text="{}/{}".format(ts.numerator, ts.denominator)))
+                my_label2[-1].text_font_size = time_signature_font_size
+                my_label2[-1].angle = 1.57
+                _html_fig.add_layout(my_label2[-1])
 
         _html_fig.width = width
         _html_fig.height = height
