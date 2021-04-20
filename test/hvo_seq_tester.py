@@ -42,3 +42,6 @@ if __name__ == "__main__":
     print(hvo_seq.stft())
     hvo_seq.save_spectrogram()
 
+    #mel_spectrogram
+    print(hvo_seq.mel_spectrogram())
+    hvo_seq.save_mel_spectrogram()
