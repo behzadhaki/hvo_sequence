@@ -1094,10 +1094,12 @@ class HVO_Sequence(object):
     #   Utilities to compute and plot STFT
     #   --------------------------------------------------------------
 
-    def stft(self, sr=44100, n_fft=2048, hop_length=128, win_length=1024, window='hamming'):
+    def stft(self, sr=44100, sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2", n_fft=2048, hop_length=128,
+             win_length=1024, window='hamming'):
         """
         Returns the Short-time Fourier transform.
         @param sr:                          sample rate of the audio file from which the STFT is computed
+        @param sf_path:                     path to the soundfont samples
         @param n_fft:                       length of the windowed signal after padding to closest power of 2
         @param hop_length:                  number of samples between successive STFT frames
         @param win_length:                  window length in samples. must be equal or smaller than n_fft
@@ -1115,7 +1117,7 @@ class HVO_Sequence(object):
             return None
 
         # Get audio signal
-        y = self.save_audio(sr=sr)
+        y = self.save_audio(sr=sr,sf_path=sf_path)
 
         # Get STFT
         sy = librosa.stft(y, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window)
@@ -1124,12 +1126,14 @@ class HVO_Sequence(object):
         return stft
 
 
-    def save_spectrogram(self, filename="misc/temp_spec.png", sr=44100, n_fft=2048, hop_length=128, win_length=1024, window='hamming',
-                       plot_title="STFT", width=800, height=400, font_size=12, colorbar=False ):
+    def save_spectrogram(self, filename="misc/temp_spec.png", sr=44100, sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2",
+                        n_fft=2048, hop_length=128, win_length=1024, window='hamming', plot_title="STFT", width=800,
+                         height=400, font_size=12, colorbar=False ):
         """
         Saves STFT spectrogram in png file.
         @param filename:                    filename for saved figure
         @param sr:                          sample rate of the audio file from which the STFT is computed
+        @param sf_path:                     path to the soundfont samples
         @param n_fft:                       length of the windowed signal after padding to closest power of 2
         @param hop_length:                  number of samples between successive STFT frames
         @param win_length:                  window length in samples. must be equal or smaller than n_fft
@@ -1141,7 +1145,7 @@ class HVO_Sequence(object):
         @param colorbar:                    if True, display colorbar
         """
         # Get STFT
-        stft = self.stft(sr=sr, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window)
+        stft = self.stft(sr=sr, sf_path=sf_path, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window)
 
         # Plot specs
         plt.rcParams['font.size'] = font_size
