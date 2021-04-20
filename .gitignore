@@ -139,3 +139,4 @@ dmypy.json
 test/misc/temp.html
 test/misc/temp.wav
 test/misc/temp_spec.png
+test/misc/temp_mel_spec.png
