@@ -134,3 +134,8 @@ dmypy.json
 
 # Development notebooks
 .dev_notebooks/
+
+# Files generated in test
+test/misc/temp.html
+test/misc/temp.wav
+test/temp_spec.png
