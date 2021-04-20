@@ -13,6 +13,7 @@ import warnings
 from hvo_sequence.utils import is_power_of_two, create_grid_for_n_bars, find_pitch_and_tag
 from hvo_sequence.custom_dtypes import Tempo, Time_Signature
 
+
 class HVO_Sequence(object):
 
     def __init__(self, drum_mapping=None):
@@ -1113,11 +1114,11 @@ class HVO_Sequence(object):
             return None
 
         if not hop_length > 0:
-            warnings.warn("Hop size must be larger than 0.")
+            warnings.warn("Hop size must be greater than 0.")
             return None
 
         # Get audio signal
-        y = self.save_audio(sr=sr,sf_path=sf_path)
+        y = self.save_audio(sr=sr, sf_path=sf_path)
 
         # Get STFT
         sy = librosa.stft(y, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window)
@@ -1125,10 +1126,10 @@ class HVO_Sequence(object):
 
         return stft
 
-
-    def save_spectrogram(self, filename="misc/temp_spec.png", sr=44100, sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2",
-                        n_fft=2048, hop_length=128, win_length=1024, window='hamming', plot_title="STFT", width=800,
-                         height=400, font_size=12, colorbar=False ):
+    def save_spectrogram(self, filename="misc/temp_spec.png", sr=44100,
+                         sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2", n_fft=2048, hop_length=128,
+                         win_length=1024, window='hamming', plot_title="STFT", width=800, height=400, font_size=12,
+                         colorbar=False):
         """
         Saves STFT spectrogram in png file.
         @param filename:                    filename for saved figure
@@ -1145,23 +1146,116 @@ class HVO_Sequence(object):
         @param colorbar:                    if True, display colorbar
         """
         # Get STFT
-        stft = self.stft(sr=sr, sf_path=sf_path, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window)
+        stft = self.stft(sr=sr, sf_path=sf_path, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                         window=window)
 
         # Plot specs
         plt.rcParams['font.size'] = font_size
 
-        px = 1 / plt.rcParams['figure.dpi'] # pixel to inch conversion factor
-        [width_i, height_i] = [width*px, height*px] # width and height in inches
+        px = 1 / plt.rcParams['figure.dpi']  # pixel to inch conversion factor
+        [width_i, height_i] = [width * px, height * px]  # width and height in inches
 
-        plt.rcParams.update({'figure.autolayout': True}) # figure layout
+        plt.rcParams.update({'figure.autolayout': True})  # figure layout
         plt.tight_layout()
 
         # Plot spectogram and save
         fig, ax = plt.subplots(figsize=(width_i, height_i))
         ax.set_title(plot_title)
 
-        warnings.filterwarnings("ignore") # ignore matplotlib deprecation warnings caused by librosa.display
         spec = librosa.display.specshow(librosa.amplitude_to_db(stft, ref=np.max), y_axis='log', x_axis='time', ax=ax)
+
+        if colorbar:
+            fig.colorbar(spec, ax=ax, format="%+2.0f dB")
+
+        fig.savefig(filename)
+
+    #   --------------------------------------------------------------
+    #   Utilities to compute and plot mel spectrogram
+    #   --------------------------------------------------------------
+
+    def mel_spectrogram(self, sr=44100, sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2", n_fft=2048,
+                        hop_length=128, win_length=1024, window='hamming', n_mels=24, fmin=0, fmax=22050):
+        """
+        Returns the Mel spectrogram.
+        @param sr:                          sample rate of the audio file from which the STFT is computed
+        @param sf_path:                     path to the soundfont samples
+        @param n_fft:                       length of the windowed signal after padding to closest power of 2
+        @param hop_length:                  number of samples between successive STFT frames
+        @param win_length:                  window length in samples. must be equal or smaller than n_fft
+        @param window:                      window type specification (see scipy.signal.get_window) or function
+        @param n_mels:                      number of mel bands
+        @param fmin:                        lowest frequency in Hz
+        @param fmax:                        highest frequency in Hz
+        @return:                            mel spectrogram ndarray
+        """
+
+        # Check inputs
+        if not win_length <= n_fft:
+            warnings.warn("Window size must be equal or smaller than FFT size.")
+            return None
+
+        if not hop_length > 0:
+            warnings.warn("Hop size must be greater than 0.")
+            return None
+
+        if not n_mels > 0:
+            warnings.warn("Number of mel bands must be greater than 0.")
+            return None
+
+        if not fmin >= 0 or not fmax > 0:
+            warnings.warn("Frequency must be greater than 0.")
+            return None
+
+        # Get audio signal
+        y = self.save_audio(sr=sr, sf_path=sf_path)
+
+        # Get mel spectrogram
+        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                                                  window=window, n_mels=n_mels, fmin=fmin, fmax=fmax)
+
+        return mel_spec
+
+    def save_mel_spectrogram(self, filename="misc/temp_mel_spec.png", sr=44100,
+                             sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2", n_fft=2048, hop_length=128,
+                             win_length=1024, window='hamming', n_mels=24, fmin=0, fmax=22050,
+                             plot_title="'Mel-frequency spectrogram'", width=800, height=400, font_size=12,
+                             colorbar=False):
+        """
+        Saves STFT spectrogram in png file.
+        @param filename:                    filename for saved figure
+        @param sr:                          sample rate of the audio file from which the STFT is computed
+        @param sf_path:                     path to the soundfont samples
+        @param n_fft:                       length of the windowed signal after padding to closest power of 2
+        @param hop_length:                  number of samples between successive STFT frames
+        @param win_length:                  window length in samples. must be equal or smaller than n_fft
+        @param window:                      window type specification (see scipy.signal.get_window) or function
+        @param n_mels:                      number of mel bands
+        @param fmin:                        lowest frequency in Hz
+        @param fmax:                        highest frequency in Hz
+        @param plot_title:                  plot title
+        @param width:                       figure width in pixels
+        @param height:                      figure height in pixels
+        @param font_size:                   font size in pt
+        @param colorbar:                    if True, display colorbar
+        """
+        # Get mel spectrogram
+        mel_spec = self.mel_spectrogram(sr=sr, sf_path=sf_path, n_fft=n_fft, hop_length=hop_length,
+                                        win_length=win_length, window=window, n_mels=n_mels, fmin=fmin, fmax=fmax)
+
+        # Plot specs
+        plt.rcParams['font.size'] = font_size
+
+        px = 1 / plt.rcParams['figure.dpi']  # pixel to inch conversion factor
+        [width_i, height_i] = [width * px, height * px]  # width and height in inches
+
+        plt.rcParams.update({'figure.autolayout': True})  # figure layout
+        plt.tight_layout()
+
+        # Plot spectogram and save
+        fig, ax = plt.subplots(figsize=(width_i, height_i))
+        ax.set_title(plot_title)
+
+        spec = librosa.display.specshow(librosa.power_to_db(mel_spec, ref=np.max), y_axis='mel', x_axis='time', ax=ax)
 
         if colorbar:
             fig.colorbar(spec, ax=ax, format="%+2.0f dB")
