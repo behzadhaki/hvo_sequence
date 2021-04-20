@@ -1095,17 +1095,29 @@ class HVO_Sequence(object):
     def stft(self, sr=44100, n_fft=2048, hop_length=128, win_length=1024, window='hamming'):
         """
         Returns the Short-time Fourier transform.
-        @param n_fft:                       FFT size in samples. must be a power of 2 larger or equal than win_length
-        @param win_length:                  window length in samples
+        @param n_fft:                       length of the windowed signal after padding to closest power of 2
+        @param win_length:                  window length in samples. must be equal or smaller than n_fft
         @param window:                      window type specification (see scipy.signal.get_window) or function
         @param hop_length:                  number of samples between successive STFT frames
         @param sr:                          sample rate of the audio file from which the STFT is computed
         """
 
-        # test inputs
+        # Check inputs
+        if not win_length <= n_fft:
+            warnings.warn("Window size must be equal or smaller than FFT size.")
+            return None
 
+        if not hop_length > 0:
+            warnings.warn("Hop size must be larger than 0.")
+            return None
+
+        # Get audio signal
         y = self.save_audio(sr=sr)
+
+        # Get STFT
         sy = librosa.stft(y, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window)
         stft = np.abs(sy)
 
         return stft
+
+    # plot stft
