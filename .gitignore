@@ -138,4 +138,4 @@ dmypy.json
 # Files generated in test
 test/misc/temp.html
 test/misc/temp.wav
-test/temp_spec.png
+test/misc/temp_spec.png

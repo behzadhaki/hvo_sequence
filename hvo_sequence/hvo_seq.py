@@ -1124,7 +1124,7 @@ class HVO_Sequence(object):
         return stft
 
 
-    def save_plot_stft(self, filename="temp_spec.png", sr=44100, n_fft=2048, hop_length=128, win_length=1024, window='hamming',
+    def save_plot_stft(self, filename="misc/temp_spec.png", sr=44100, n_fft=2048, hop_length=128, win_length=1024, window='hamming',
                        plot_title="STFT", width=800, height=400, font_size=12, colorbar=False ):
         """
         Saves STFT spectrogram in png file.
