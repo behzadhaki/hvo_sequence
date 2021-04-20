@@ -2,6 +2,7 @@ import numpy as np
 import note_seq
 from note_seq.protobuf import music_pb2
 import soundfile as sf
+import librosa
 from bokeh.plotting import output_file, show, save
 from bokeh.io import output_notebook
 from bokeh.models import Span, Label
@@ -165,7 +166,7 @@ class HVO_Sequence(object):
         if not calculable:
             print("can't get offsets/utimings as there is no hvo score previously provided")
         else:
-            return self.hvo[:, 2 * self.number_of_voices: ]
+            return self.hvo[:, 2 * self.number_of_voices:]
 
     #   ----------------------------------------------------------------------
     #   Utility methods for segment derivation
@@ -186,7 +187,7 @@ class HVO_Sequence(object):
             warnings.warn("Can't carry out request as Tempos are not specified")
             return None
         else:
-            time_regions = [0, 100000]      # 100000 to denote infinite
+            time_regions = [0, 100000]  # 100000 to denote infinite
             for ix, tempo in enumerate(self.tempos):
                 if ix > 0:  # Force 1st tempo to be at 0 even if doesn't start at the very beginning
                     time_regions.append(tempo.time_step)
@@ -363,7 +364,7 @@ class HVO_Sequence(object):
             for ix, time_signature_in_segment_ix in enumerate(time_signatures_per_seg):
                 # calculate the number of steps per beat for corresponding beat_division_factors
                 beat_divs = time_signature_in_segment_ix.beat_division_factors
-                mock_beat_grid_lines = np.concatenate([np.arange(beat_div)/beat_div for beat_div in beat_divs])
+                mock_beat_grid_lines = np.concatenate([np.arange(beat_div) / beat_div for beat_div in beat_divs])
                 steps_per_beat_per_segment.append(len(np.unique(mock_beat_grid_lines)))
 
             return steps_per_beat_per_segment
@@ -401,8 +402,8 @@ class HVO_Sequence(object):
             segment_boundaries[-1] = self.total_number_of_steps
 
             for ix, steps_per_beat_per_segment_ix in enumerate(steps_per_beat_per_segments):
-                total_steps_in_segment_ix = segment_boundaries[ix+1]-segment_boundaries[ix]
-                beats_in_segment_ix = total_steps_in_segment_ix/steps_per_beat_per_segment_ix
+                total_steps_in_segment_ix = segment_boundaries[ix + 1] - segment_boundaries[ix]
+                beats_in_segment_ix = total_steps_in_segment_ix / steps_per_beat_per_segment_ix
                 n_beats_per_seg.append(beats_in_segment_ix)
 
             return n_beats_per_seg
@@ -419,7 +420,7 @@ class HVO_Sequence(object):
         if n_beats_per_segments is not None and time_signatures is not None:
             n_bars_per_segments = list()
             for segment_ix, n_beats_per_segment_ix in enumerate(n_beats_per_segments):
-                n_bars_in_segment_ix = n_beats_per_segment_ix/time_signatures[segment_ix].numerator
+                n_bars_in_segment_ix = n_beats_per_segment_ix / time_signatures[segment_ix].numerator
                 n_bars_per_segments.append(n_bars_in_segment_ix)
             return n_bars_per_segments
         else:
@@ -540,7 +541,6 @@ class HVO_Sequence(object):
             # Return the distance of the index from the lower bound of segment
             return step_ix - self.time_signature_consistent_segment_lower_bounds[time_signature_segment_ix]
 
-
     """@property
     def bar_lens_per_segments(self):
         # Returns """
@@ -559,10 +559,10 @@ class HVO_Sequence(object):
     def total_len(self):
         # Calculates the total length of score in seconds if hvo score, time signature and qpm are available
         calculable = all([self.is_hvo_score_available(print_missing=True),
-                         self.is_tempos_available(print_missing=True),
-                         self.is_time_signatures_available(print_missing=True)])
+                          self.is_tempos_available(print_missing=True),
+                          self.is_time_signatures_available(print_missing=True)])
         if calculable:
-            return self.grid_lines[-1]+0.5*(self.grid_lines[-1] - self.grid_lines[-2])
+            return self.grid_lines[-1] + 0.5 * (self.grid_lines[-1] - self.grid_lines[-2])
         else:
             return None
 
@@ -598,7 +598,7 @@ class HVO_Sequence(object):
                         triplet_grid_flag = True
 
                 if po2_grid_flag and triplet_grid_flag:
-                    grid_types_per_segments.append( "mix")
+                    grid_types_per_segments.append("mix")
                 elif po2_grid_flag:
                     grid_types_per_segments.append("binary")
                 else:
@@ -700,9 +700,11 @@ class HVO_Sequence(object):
         """
 
         """
-        major_grid_lines = [0]       # Happens at the beggining of beats! --> Beat Pos depends on Time_signature only (If Time_sig changes before an expected beat position, force reset beat position)
-        minor_grid_lines = []       # Any Index that's not major
-        downbeat_grid_lines = [0]    # every nth major_ix where n is time sig numerator in segment (downbeat always measured from the beginning of a time signature time stamp)
+        major_grid_lines = [
+            0]  # Happens at the beggining of beats! --> Beat Pos depends on Time_signature only (If Time_sig changes before an expected beat position, force reset beat position)
+        minor_grid_lines = []  # Any Index that's not major
+        downbeat_grid_lines = [
+            0]  # every nth major_ix where n is time sig numerator in segment (downbeat always measured from the beginning of a time signature time stamp)
 
         major_grid_line_indices = [0]
         minor_grid_line_indices = []
@@ -730,17 +732,17 @@ class HVO_Sequence(object):
             delta_t_ratios = delta_t_ratios[1:] - delta_t_ratios[:-1]
             steps_per_beat_in_seg = len(delta_t_ratios)
 
-            for step_ix in range(ts_lb - ts_lb, ts_up - ts_lb):         # For each ts, re-start counting from 0
-                actual_step_ix = step_ix if ts_consistent_seg_ix == 0 else step_ix+len(grid_lines)-1
+            for step_ix in range(ts_lb - ts_lb, ts_up - ts_lb):  # For each ts, re-start counting from 0
+                actual_step_ix = step_ix if ts_consistent_seg_ix == 0 else step_ix + len(grid_lines) - 1
                 tempo = self.tempos[self.tempo_segment_index_at_step(actual_step_ix)]
                 beat_duration_at_step = (60.0 / tempo.qpm) * 4.0 / time_sig.denominator
                 grid_lines.append(grid_lines[-1] + delta_t_ratios[step_ix % steps_per_beat_in_seg] * \
                                   beat_duration_at_step)
                 current_step = current_step + 1
-                if (step_ix+1) % (steps_per_beat_in_seg) == 0:
+                if (step_ix + 1) % (steps_per_beat_in_seg) == 0:
                     major_grid_lines.append(grid_lines[-1])
                     major_grid_line_indices.append(current_step)
-                    if (step_ix+1) % (time_sig.numerator*steps_per_beat_in_seg) == 0:
+                    if (step_ix + 1) % (time_sig.numerator * steps_per_beat_in_seg) == 0:
                         downbeat_grid_lines.append(grid_lines[-1])
                         downbeat_grid_line_indices.append(current_step)
                 else:
@@ -859,40 +861,40 @@ class HVO_Sequence(object):
         pos_instrument_tensors = np.transpose(np.nonzero(self.__hvo[:, :n_voices]))
 
         # Set note duration as 1/2 of the smallest grid distance
-        note_duration = np.min(self.grid_lines[1:]-self.grid_lines[:-1]) / 2.0
+        note_duration = np.min(self.grid_lines[1:] - self.grid_lines[:-1]) / 2.0
 
         # Add notes to the NoteSequence object
         for drum_event in pos_instrument_tensors:  # drum_event -> [grid_position, drum_voice_class]
-            grid_pos = drum_event[0]        # grid position
+            grid_pos = drum_event[0]  # grid position
             drum_voice_class = drum_event[1]  # drum_voice_class in range(n_voices)
 
             # Grab the first note for each instrument group
             pitch = list(self.__drum_mapping.values())[drum_voice_class][0]
             velocity = self.__hvo[grid_pos, drum_voice_class + n_voices]  # Velocity of the drum event
-            utiming_ratio = self.__hvo[                               # exact timing of the drum event (rel. to grid)
+            utiming_ratio = self.__hvo[  # exact timing of the drum event (rel. to grid)
                 grid_pos, drum_voice_class + 2 * n_voices]
 
             utiming = 0
             if utiming_ratio < 0:
                 # if utiming comes left of grid, figure out the grid resolution left of the grid line
                 if grid_pos > 0:
-                    utiming = (self.grid_lines[grid_pos] - self.grid_lines[grid_pos-1]) * \
+                    utiming = (self.grid_lines[grid_pos] - self.grid_lines[grid_pos - 1]) * \
                               utiming_ratio
                 else:
-                    utiming = 0      # if utiming comes left of beginning,  snap it to the very first grid (loc[0]=0)
+                    utiming = 0  # if utiming comes left of beginning,  snap it to the very first grid (loc[0]=0)
             elif utiming_ratio > 0:
-                if grid_pos < (self.total_number_of_steps-2):
-                    utiming = (self.grid_lines[grid_pos+1] -
+                if grid_pos < (self.total_number_of_steps - 2):
+                    utiming = (self.grid_lines[grid_pos + 1] -
                                self.grid_lines[grid_pos]) * utiming_ratio
                 else:
                     utiming = (self.grid_lines[grid_pos] -
-                               self.grid_lines[grid_pos-1]) * utiming_ratio
+                               self.grid_lines[grid_pos - 1]) * utiming_ratio
                     # if utiming_ratio comes right of the last grid line, use the previous grid resolution for finding
                     # the utiming value in ms
 
-            start_time = self.grid_lines[grid_pos] + utiming      # starting time of note in sec
+            start_time = self.grid_lines[grid_pos] + utiming  # starting time of note in sec
 
-            end_time = start_time + note_duration                   # ending time of note in sec
+            end_time = start_time + note_duration  # ending time of note in sec
 
             ns.notes.add(pitch=pitch, start_time=start_time.item(), end_time=end_time.item(),
                          is_drum=True, instrument=midi_track_n, velocity=int(velocity.item() * 127))
@@ -987,9 +989,9 @@ class HVO_Sequence(object):
     def to_html_plot(self, filename="misc/temp.html", show_figure=False,
                      show_tempo=True, tempo_font_size="8pt",
                      show_time_signature=True, time_signature_font_size="8pt",
-                     minor_grid_color = "black", minor_line_width=0.1,
-                     major_grid_color = "blue", major_line_width=0.5,
-                     downbeat_color = "blue", downbeat_line_width=2,
+                     minor_grid_color="black", minor_line_width=0.1,
+                     major_grid_color="blue", major_line_width=0.5,
+                     downbeat_color="blue", downbeat_line_width=2,
                      width=800, height=400):
         """
         Creates a bokeh plot of the hvo sequence
@@ -1059,7 +1061,7 @@ class HVO_Sequence(object):
             for ix, tempo in enumerate(self.tempos):
                 my_label.append(Label(x=grid_lines[tempo_lower_b[ix]], y=list(unique_pitches)[-1] + 2,
                                       text="qpm {:.1f}".format(tempo.qpm)))
-                my_label[-1].text_font_size=tempo_font_size
+                my_label[-1].text_font_size = tempo_font_size
                 my_label[-1].angle = 1.57
                 _html_fig.add_layout(my_label[-1])
 
@@ -1080,11 +1082,30 @@ class HVO_Sequence(object):
         if show_figure:
             show(_html_fig)
 
-
-
-
         # Save the plot
         output_file(filename)  # Set name used for saving the figure
         save(_html_fig)  # Save to file
 
         return _html_fig
+
+    #   --------------------------------------------------------------
+    #   Utilities to compute and plot STFT
+    #   --------------------------------------------------------------
+
+    def stft(self, sr=44100, n_fft=2048, hop_length=128, win_length=1024, window='hamming'):
+        """
+        Returns the Short-time Fourier transform.
+        @param n_fft:                       FFT size in samples. must be a power of 2 larger or equal than win_length
+        @param win_length:                  window length in samples
+        @param window:                      window type specification (see scipy.signal.get_window) or function
+        @param hop_length:                  number of samples between successive STFT frames
+        @param sr:                          sample rate of the audio file from which the STFT is computed
+        """
+
+        # test inputs
+
+        y = self.save_audio(sr=sr)
+        sy = librosa.stft(y, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window)
+        stft = np.abs(sy)
+
+        return stft
