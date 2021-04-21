@@ -842,12 +842,12 @@ class HVO_Sequence(object):
     def force_vo_reset(self):
         return self.__force_vo_reset
 
-    @hvo.setter
+    @force_vo_reset.setter
     def force_vo_reset(self, x):
 
         # Ensure x is a boolean
         assert isinstance(x, bool), "Expected boolean " \
-                                          "but received {}".format(type(x))
+                                    "but received {}".format(type(x))
 
         # Now, safe to update the local force_vo_reset boolean
         self.__force_vo_reset = x
@@ -869,7 +869,7 @@ class HVO_Sequence(object):
             return None
 
         # for consistency, turn voice_idx int into list
-        if isistance(voice_idx, int):
+        if isinstance(voice_idx, int):
             voice_idx = [voice_idx]
 
         # props list lengths must be equal to voice_idx length
@@ -909,11 +909,12 @@ class HVO_Sequence(object):
             if isinstance(reset_offsets, list):
                 _reset_offsets = reset_offsets[i]
 
-            if self.force_vo_reset() and _reset_hits and not (_reset_velocity or _reset_offsets):
-                _reset_velocity = True
-                _reset_offsets = True
-                warning.warn("Forcing velocity and offset reset for voice {}. Deactivate setting force_vo_reset() "
-                             "property to False".format(_voice_idx))
+            if self.force_vo_reset and _reset_hits:
+                if not _reset_velocity or not _reset_offsets:
+                    _reset_velocity = True
+                    _reset_offsets = True
+                    warnings.warn("Forcing velocity and offset reset for voice {}."\
+                                  " Deactivate setting force_vo_reset property to False".format(_voice_idx))
 
             # reset voce
             if _reset_hits:
