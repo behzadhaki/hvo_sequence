@@ -142,6 +142,10 @@ class HVO_Sequence(object):
 
     @property
     def hits(self):
+        """ ndarray of dimensions m,n where m is the number of time steps and n the number of drums in the current
+            drum mapping (e.g. 9 for the reduced mapping). The values of the array are 1 or 0, indicating whether a
+            hit occurs at that time step for that drum (1) or not (0).
+        """
         calculable = all([self.is_hvo_score_available(print_missing=True),
                           self.is_drum_mapping_available(print_missing=True)])
         if not calculable:
@@ -149,8 +153,33 @@ class HVO_Sequence(object):
         else:
             return self.hvo[:, :self.number_of_voices]
 
+    def __is_hits_valid(self, hits_array):
+        valid = True
+        if len(self.hvo[:, :self.number_of_voices]) != len(hits_array):
+            valid = False
+            print("hits length mismatch")
+        if np.min(hits_array) < 0 or np.max(hits_array) > 1:
+            valid = False
+            print("invalid hit values in array, they must be 0 or 1")
+        return valid
+
+    @hits.setter
+    def hits(self, hits_array):
+        calculable = all([self.is_hvo_score_available(print_missing=True),
+                          self.is_drum_mapping_available(print_missing=True)])
+        if not calculable:
+            print("can't set hits as there is no hvo score previously provided")
+        else:
+            if self.__is_hits_valid(hits_array):
+                #TODO: if hit is 0 - force remove vels and offsets?
+                self.hvo[:, :self.number_of_voices] = hits_array
+
     @property
     def velocities(self):
+        """ ndarray of dimensions m,n where m is the number of time steps and n the number of drums in the current
+            drum mapping (e.g. 9 for the reduced mapping). The values of the array are continuous floating point
+            numbers from 0 to 1 indicating the velocity.
+        """
         calculable = all([self.is_hvo_score_available(print_missing=True),
                           self.is_drum_mapping_available(print_missing=True)])
         if not calculable:
@@ -158,14 +187,28 @@ class HVO_Sequence(object):
         else:
             return self.hvo[:, self.number_of_voices: 2 * self.number_of_voices]
 
+    @velocities.setter
+    def velocities(self, vel_array):
+        #TODO
+        return 0
+
     @property
     def offsets(self):
+        """ ndarray of dimensions m,n where m is the number of time steps and n the number of drums in the current
+            drum mapping (e.g. 9 for the reduced mapping). The values of the array are continuous floating point
+            numbers from -0.5 to 0.5 indicating the offset respect to the beat grid line that each hit is on.
+        """
         calculable = all([self.is_hvo_score_available(print_missing=True),
                           self.is_drum_mapping_available(print_missing=True)])
         if not calculable:
             print("can't get offsets/utimings as there is no hvo score previously provided")
         else:
             return self.hvo[:, 2 * self.number_of_voices: ]
+
+    @offsets.setter
+    def offsets(self, offset_array):
+        #TODO
+        return 0
 
     #   ----------------------------------------------------------------------
     #   Utility methods for segment derivation
