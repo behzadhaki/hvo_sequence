@@ -50,6 +50,8 @@ class HVO_Sequence(object):
         self.__drum_mapping = None
         self.__hvo = None
 
+        self.__force_vo_reset = True
+
         # Use property setters to initiate properties (DON"T ASSIGN ABOVE so that the correct datatype is checked)
         if drum_mapping:
             self.drum_mapping = drum_mapping
@@ -836,6 +838,20 @@ class HVO_Sequence(object):
     #   Utilities to modify voices in the sequence
     #   --------------------------------------------------------------
 
+    @property
+    def force_vo_reset(self):
+        return self.__force_vo_reset
+
+    @hvo.setter
+    def force_vo_reset(self, x):
+
+        # Ensure x is a boolean
+        assert isinstance(x, bool), "Expected boolean " \
+                                          "but received {}".format(type(x))
+
+        # Now, safe to update the local force_vo_reset boolean
+        self.__force_vo_reset = x
+
     def reset_voices(self, voice_idx=None, reset_hits=True, reset_velocity=True, reset_offsets=True):
         """
         @param voice_idx:                   voice index or indexes (can be single value or list of values) according
@@ -850,6 +866,7 @@ class HVO_Sequence(object):
 
         if voice_idx is None:
             warnings.warn("Pass a voice index or a list of voice indexes to be reset")
+            return None
 
         # for consistency, turn voice_idx int into list
         if isistance(voice_idx, int):
@@ -858,10 +875,13 @@ class HVO_Sequence(object):
         # props list lengths must be equal to voice_idx length
         if isinstance(reset_hits, list) and len(reset_hits) != len(voice_idx):
             warnings.warn("Reset_hits must be boolean or list of booleans of length equal to voice_idx")
+            return None
         if isinstance(reset_velocity, list) and len(reset_velocity) != len(voice_idx):
             warnings.warn("Reset_velocities must be boolean or list of booleans of length equal to voice_idx")
+            return None
         if isinstance(reset_offsets, list) and len(reset_offsets) != len(voice_idx):
             warnings.warn("Reset_offsets must be boolean or list of booleans of length equal to voice_idx")
+            return None
 
         n_inst = len(self.drum_mapping)  # number of instruments in the mapping
         n_frames = self.hvo.shape[0]  # number of frames
@@ -889,7 +909,13 @@ class HVO_Sequence(object):
             if isinstance(reset_offsets, list):
                 _reset_offsets = reset_offsets[i]
 
-            # reset voice
+            if self.force_vo_reset() and _reset_hits and not (_reset_velocity or _reset_offsets):
+                _reset_velocity = True
+                _reset_offsets = True
+                warning.warn("Forcing velocity and offset reset for voice {}. Deactivate setting force_vo_reset() "
+                             "property to False".format(_voice_idx))
+
+            # reset voce
             if _reset_hits:
                 self.hvo[:, h_idx] = np.zeros(n_frames)
             if _reset_velocity:
