@@ -860,7 +860,7 @@ class HVO_Sequence(object):
                                             booleans where each index corresponds to a voice in voice_idx list
         @param reset_velocity:              if True, resets velocities in every voice in voice_idx. can be a list of
                                             booleans where each index corresponds to a voice in voice_idx list
-        @param reset_offsets:               if True, resets offsts in every voice in voice_idx. can be a list of
+        @param reset_offsets:               if True, resets offsets in every voice in voice_idx. can be a list of
                                             booleans where each index corresponds to a voice in voice_idx list
         """
 
