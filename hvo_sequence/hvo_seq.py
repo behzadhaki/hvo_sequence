@@ -153,26 +153,26 @@ class HVO_Sequence(object):
         else:
             return self.hvo[:, :self.number_of_voices]
 
-    def __is_hits_valid(self, hits_array):
+    def __is_hit_array_valid(self, hit_array):
         valid = True
-        if len(self.hvo[:, :self.number_of_voices]) != len(hits_array):
+        if len(self.hvo[:, :self.number_of_voices]) != len(hit_array):
             valid = False
-            print("hits length mismatch")
-        if np.min(hits_array) < 0 or np.max(hits_array) > 1:
+            print("hit array length mismatch")
+        if np.min(hit_array) < 0 or np.max(hit_array) > 1:
             valid = False
             print("invalid hit values in array, they must be 0 or 1")
         return valid
 
     @hits.setter
-    def hits(self, hits_array):
+    def hits(self, hit_array):
         calculable = all([self.is_hvo_score_available(print_missing=True),
                           self.is_drum_mapping_available(print_missing=True)])
         if not calculable:
             print("can't set hits as there is no hvo score previously provided")
         else:
-            if self.__is_hits_valid(hits_array):
+            if self.__is_hit_array_valid(hit_array):
                 #TODO: if hit is 0 - force remove vels and offsets?
-                self.hvo[:, :self.number_of_voices] = hits_array
+                self.hvo[:, :self.number_of_voices] = hit_array
 
     @property
     def velocities(self):
@@ -187,10 +187,25 @@ class HVO_Sequence(object):
         else:
             return self.hvo[:, self.number_of_voices: 2 * self.number_of_voices]
 
+    def __is_vel_array_valid(self, vel_array):
+        valid = True
+        if len(self.hvo[:, self.number_of_voices: 2 * self.number_of_voices]) != len(vel_array):
+            valid = False
+            print("velocity array length mismatch")
+        if np.min(vel_array) < 0 or np.max(vel_array) > 1:
+            valid = False
+            print("invalid velocity values in array, they must be between 0 and 1")
+        return valid
+
     @velocities.setter
     def velocities(self, vel_array):
-        #TODO
-        return 0
+        calculable = all([self.is_hvo_score_available(print_missing=True),
+                          self.is_drum_mapping_available(print_missing=True)])
+        if not calculable:
+            print("can't set velocities as there is no hvo score previously provided")
+        else:
+            if self.__is_vel_array_valid(vel_array):
+                self.hvo[:, self.number_of_voices: 2 * self.number_of_voices] = vel_array
 
     @property
     def offsets(self):
@@ -203,12 +218,27 @@ class HVO_Sequence(object):
         if not calculable:
             print("can't get offsets/utimings as there is no hvo score previously provided")
         else:
-            return self.hvo[:, 2 * self.number_of_voices: ]
+            return self.hvo[:, 2 * self.number_of_voices:]
+
+    def __is_offset_array_valid(self, offset_array):
+        valid = True
+        if len(self.hvo[:, 2 * self.number_of_voices:]) != len(offset_array):
+            valid = False
+            print("offset array length mismatch")
+        if np.min(offset_array) < -0.5 or np.max(offset_array) > 0.5:
+            valid = False
+            print("invalid offset values in array, they must be between -0.5 and 0.5")
+        return valid
 
     @offsets.setter
     def offsets(self, offset_array):
-        #TODO
-        return 0
+        calculable = all([self.is_hvo_score_available(print_missing=True),
+                          self.is_drum_mapping_available(print_missing=True)])
+        if not calculable:
+            print("can't set offsets as there is no hvo score previously provided")
+        else:
+            if self.__is_offset_array_valid(offset_array):
+                self.hvo[:, 2 * self.number_of_voices:] = offset_array
 
     #   ----------------------------------------------------------------------
     #   Utility methods for segment derivation
