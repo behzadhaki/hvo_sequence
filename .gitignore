@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
 
 # C extensions
 *.so
@@ -127,3 +128,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# IntelliJ IDE Settings
+.idea/
+
+# Development notebooks
+.dev_notebooks/
+
+# Files generated in test
+test/misc/temp.html
+test/misc/temp.wav
+test/misc/temp_spec.png
+test/misc/temp_mel_spec.png
