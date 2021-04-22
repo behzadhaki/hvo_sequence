@@ -27,7 +27,7 @@ if __name__ == "__main__":
     hvo_seq.hvo = np.concatenate((hits, vels, offs), axis=1)
 
     # Plot, synthesize and export to midi
-    hvo_seq.to_html_plot(show_figure=True)
+    #hvo_seq.to_html_plot(show_figure=True)
     #hvo_seq.save_audio()
     #hvo_seq.save_hvo_to_midi()
 
@@ -37,3 +37,11 @@ if __name__ == "__main__":
     # print(hvo_seq.n_beats_per_segments)
     # hvo_seq.major_and_minor_grid_lines
     #
+
+    #STFT
+    print(hvo_seq.stft())
+    hvo_seq.save_spectrogram()
+
+    #mel_spectrogram
+    print(hvo_seq.mel_spectrogram())
+    hvo_seq.save_mel_spectrogram()
