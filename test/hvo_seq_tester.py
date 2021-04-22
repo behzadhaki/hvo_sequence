@@ -37,6 +37,14 @@ if __name__ == "__main__":
     # print(hvo_seq.n_beats_per_segments)
     # hvo_seq.major_and_minor_grid_lines
     #
+    
+    # Reset voices
+    hvo_seq.reset_voices([2,3])
+    hvo_seq.to_html_plot(show_figure=True)
+
+    hvo_seq.reset_voices([0],reset_hits=True,reset_velocity=False)
+    hvo_seq.to_html_plot(show_figure=True)
+
 
     #STFT
     print(hvo_seq.stft())
@@ -45,3 +53,4 @@ if __name__ == "__main__":
     #mel_spectrogram
     print(hvo_seq.mel_spectrogram())
     hvo_seq.save_mel_spectrogram()
+
