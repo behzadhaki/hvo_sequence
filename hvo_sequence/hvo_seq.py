@@ -992,13 +992,60 @@ class HVO_Sequence(object):
                     warnings.warn("Forcing velocity and offset reset for voice {}."\
                                   " Deactivate setting force_vo_reset property to False".format(_voice_idx))
 
-            # reset voce
+            # reset voice
             if _reset_hits:
                 self.hvo[:, h_idx] = np.zeros(n_frames)
             if _reset_velocity:
                 self.hvo[:, v_idx] = np.zeros(n_frames)
             if _reset_offsets:
                 self.hvo[:, o_idx] = np.zeros(n_frames)
+
+    #   -------------------------------------------------------------
+    #   Method to flatten all voices to a single tapped sequence
+    #   -------------------------------------------------------------
+
+    def flatten_voices(self, voice_idx=0):
+
+        """ Flatten all voices into a single tapped sequence. If there are several voices hitting at the same
+        time step, the loudest one will be selected and its offset will be kept, however velocity is discarded
+        (set to the maximum).
+        
+        Parameters
+        ----------
+        voice_idx : int
+            The index of the voice where the tapped sequence will be stored. 0 by default.
+        """
+
+        assert (voice_idx < self.number_of_voices and voice_idx >= 0), "invalid voice index"
+        time_steps = self.hvo.shape[0]
+
+        # assigning to temporary variables (it's not copying it, so any changes made will persist in the property)
+        _hits = self.hits
+        _vels = self.velocities
+        _offs = self.offsets
+
+        for i in np.arange(time_steps):
+
+            # if there is any hit at that timestep
+            if np.any(_hits[i, :] == 1):
+
+                # get index of voice with max velocity
+                _idx_keep = np.argmax(_vels[i, :])
+
+                # initialize 3 arrays
+                new_hits, new_vels, new_offs = np.zeros((3, self.number_of_voices))
+
+                # set the voice selected (0 by default) to a hit with max velocity (possible TODO: keep velocity?) and
+                # keep corresponding offset to loudest hit
+                new_hits[voice_idx] = 1
+                new_vels[voice_idx] = 1.0
+                new_offs[voice_idx] = _offs[i, _idx_keep]
+
+                # copy into array
+                _hits[i, :] = new_hits
+                _vels[i, :] = new_vels
+                _offs[i, :] = new_offs
+
 
     #   --------------------------------------------------------------
     #   Utilities to import/export different score formats such as
