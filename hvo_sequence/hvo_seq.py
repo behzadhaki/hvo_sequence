@@ -992,13 +992,96 @@ class HVO_Sequence(object):
                     warnings.warn("Forcing velocity and offset reset for voice {}."\
                                   " Deactivate setting force_vo_reset property to False".format(_voice_idx))
 
-            # reset voce
+            # reset voice
             if _reset_hits:
                 self.hvo[:, h_idx] = np.zeros(n_frames)
             if _reset_velocity:
                 self.hvo[:, v_idx] = np.zeros(n_frames)
             if _reset_offsets:
                 self.hvo[:, o_idx] = np.zeros(n_frames)
+
+    #   -------------------------------------------------------------
+    #   Method to flatten all voices to a single tapped sequence
+    #   -------------------------------------------------------------
+
+    def flatten_voices(self, get_velocities=True, reduce_dim=False, voice_idx=0):
+
+        """ Flatten all voices into a single tapped sequence. If there are several voices hitting at the same
+        time step, the loudest one will be selected and its offset will be kept, however velocity is discarded
+        (set to the maximum).
+        
+        Parameters
+        ----------
+        get_velocities: bool
+            When set to True the function will return an hvo array with the hits, velocities and
+            offsets of the voice with the hit that has maximum velocity at each time step, when
+            set to False it will do the same operation but only return the hits and offsets, discarding
+            the velocities at the end.
+        reduce_dim: bool
+            When set to False the hvo array returned will have the same number of voices as the original
+            hvo, with the tapped sequenced in the selected voice_idx and the rest of the voices set to 0.
+            When True, the hvo array returned will have only one voice.
+        voice_idx : int
+            The index of the voice where the tapped sequence will be stored. 0 by default.
+            If reduce_dim is True, this index is disregarded as the flat hvo will only have
+            one voice.
+        """
+
+        # Store number of voices
+        n_voices_keep = self.number_of_voices
+
+        if not reduce_dim:
+            # Make sure voice index is within range
+            assert (self.number_of_voices > voice_idx >= 0), "invalid voice index"
+        else:
+            # Overwrite voice index
+            voice_idx = 0
+            # Overwrite number of voices: we only want to keep one
+            n_voices_keep = 1
+
+        # Get number of time steps
+        time_steps = self.hvo.shape[0]
+
+        # Copying to new arrays since we don't want to modify existing internal hvo
+        _hits = self.hits.copy()
+        _velocities = self.velocities.copy()
+        _offsets = self.offsets.copy()
+
+        for i in np.arange(time_steps):
+
+            # initialize 3 temporary arrays
+            new_hits, new_velocities, new_offsets = np.zeros((3, n_voices_keep))
+
+            # if there is any hit at that timestep
+            if np.any(_hits[i, :] == 1):
+
+                # get index of voice with max velocity
+                _idx_keep = np.argmax(_velocities[i, :])
+
+                # copy the hit, velocity and offset of the voice in that timestep with the maximum velocity
+                new_hits[voice_idx] = 1
+                new_velocities[voice_idx] = _velocities[i, _idx_keep]
+                new_offsets[voice_idx] = _offsets[i, _idx_keep]
+
+            # copy time step into bigger array
+            _hits[i, :] = new_hits
+            _velocities[i, :] = new_velocities
+            _offsets[i, :] = new_offsets
+
+        if reduce_dim:
+            # if we want to return only 1 voice (instead of e.g. 9 with all the others to 0)
+            # we remove the other dimensions and transform it into a 2-dim array so that the
+            # concatenate after will join the arrays in the right axis
+            _hits = np.array([_hits[:, voice_idx]]).T
+            _velocities = np.array([_velocities[:, voice_idx]]).T
+            _offsets = np.array([_offsets[:, voice_idx]]).T
+
+        # concatenate arrays
+        flat_hvo = np.concatenate((_hits, _velocities, _offsets), axis=1) if get_velocities else np.concatenate((_hits, _offsets), axis=1)
+        return flat_hvo
+
+
+
 
     #   --------------------------------------------------------------
     #   Utilities to import/export different score formats such as
