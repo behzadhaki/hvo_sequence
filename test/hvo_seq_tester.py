@@ -26,6 +26,13 @@ if __name__ == "__main__":
     # Add hvo score to hvo_seq instance
     hvo_seq.hvo = np.concatenate((hits, vels, offs), axis=1)
 
+    # Returns flattened hvo (or ho) vector
+    #flat_hvo = hvo_seq.flatten_voices()
+    #flat_hvo_voice_2 = hvo_seq.flatten_voices(voice_idx=2)
+    #flat_hvo_no_vel = hvo_seq.flatten_voices(get_velocities=False)
+    #flat_hvo_one_voice = hvo_seq.flatten_voices(reduce_dim=True)
+    #flat_hvo_one_voice_no_vel = hvo_seq.flatten_voices(get_velocities=False, reduce_dim=True)
+
     # Plot, synthesize and export to midi
     #hvo_seq.to_html_plot(show_figure=True)
     #hvo_seq.save_audio()
