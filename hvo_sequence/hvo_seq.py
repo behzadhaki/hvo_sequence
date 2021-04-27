@@ -125,13 +125,10 @@ class HVO_Sequence(object):
             n_voices = int(self.__hvo.shape[1] / 3)
 
             hits_tmp = self.__hvo[:, :n_voices]
-            velocities_tmp = self.__hvo[:, n_voices:2*n_voices].copy()
-            offsets_tmp = self.__hvo[:, 2*n_voices:].copy()
+            velocities_tmp = self.__hvo[:, n_voices:2*n_voices]
+            offsets_tmp = self.__hvo[:, 2*n_voices:]
 
-            velocities_tmp = np.where(hits_tmp == 1, velocities_tmp, 0)
-            offsets_tmp = np.where(hits_tmp == 1, offsets_tmp, 0)
-
-            return np.concatenate((hits_tmp, velocities_tmp, offsets_tmp), axis=1)
+            return np.concatenate((hits_tmp, velocities_tmp * hits_tmp, offsets_tmp * hits_tmp), axis=1)
 
         return None
 
