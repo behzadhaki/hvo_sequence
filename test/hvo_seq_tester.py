@@ -54,10 +54,8 @@ if __name__ == "__main__":
 
 
     #STFT
-    print(hvo_seq.stft())
-    hvo_seq.save_spectrogram()
-
+    hvo_seq.stft() 
     #mel_spectrogram
-    print(hvo_seq.mel_spectrogram())
-    hvo_seq.save_mel_spectrogram()
+    hvo_seq.mel_spectrogram()
+
 
