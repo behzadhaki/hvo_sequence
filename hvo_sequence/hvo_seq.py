@@ -118,7 +118,22 @@ class HVO_Sequence(object):
 
     @property
     def hvo(self):
-        return self.__hvo
+
+        if self.__hvo is not None:
+            # Return 'synced' hvo array, meaning for hits == 0, velocities and offsets are returned as 0
+            # without modifying the actual values stored internally
+            n_voices = int(self.__hvo.shape[1] / 3)
+
+            hits_tmp = self.__hvo[:, :n_voices]
+            velocities_tmp = self.__hvo[:, n_voices:2*n_voices].copy()
+            offsets_tmp = self.__hvo[:, 2*n_voices:].copy()
+
+            velocities_tmp = np.where(hits_tmp == 1, velocities_tmp, 0)
+            offsets_tmp = np.where(hits_tmp == 1, offsets_tmp, 0)
+
+            return np.concatenate((hits_tmp, velocities_tmp, offsets_tmp), axis=1)
+
+        return None
 
     @hvo.setter
     def hvo(self, x):
@@ -157,14 +172,14 @@ class HVO_Sequence(object):
         if not calculable:
             print("can't get hits as there is no hvo score previously provided")
         else:
-            return self.hvo[:, :self.number_of_voices]
+            return self.__hvo[:, :self.number_of_voices]
 
     def __is_hit_array_valid(self, hit_array):
         valid = True
-        if len(self.hvo[:, :self.number_of_voices]) != len(hit_array):
+        if len(self.__hvo[:, :self.number_of_voices]) != len(hit_array):
             valid = False
             print("hit array length mismatch")
-        if np.min(hit_array) < 0 or np.max(hit_array) > 1:
+        if not np.all(np.logical_or(np.asarray(hit_array) == 0, np.asarray(hit_array) == 1)):
             valid = False
             print("invalid hit values in array, they must be 0 or 1")
         return valid
@@ -177,7 +192,6 @@ class HVO_Sequence(object):
             print("can't set hits as there is no hvo score previously provided")
         else:
             if self.__is_hit_array_valid(hit_array):
-                #TODO: if hit is 0 - force remove vels and offsets?
                 self.hvo[:, :self.number_of_voices] = hit_array
 
     @property
@@ -191,11 +205,13 @@ class HVO_Sequence(object):
         if not calculable:
             print("can't get velocities as there is no hvo score previously provided")
         else:
-            return self.hvo[:, self.number_of_voices: 2 * self.number_of_voices]
+            # Note that the value returned is the internal one - even if a hit is 0 at an index,
+            # velocity at that same index might not be 0
+            return self.__hvo[:, self.number_of_voices: 2 * self.number_of_voices]
 
     def __is_vel_array_valid(self, vel_array):
         valid = True
-        if len(self.hvo[:, self.number_of_voices: 2 * self.number_of_voices]) != len(vel_array):
+        if len(self.__hvo[:, self.number_of_voices: 2 * self.number_of_voices]) != len(vel_array):
             valid = False
             print("velocity array length mismatch")
         if np.min(vel_array) < 0 or np.max(vel_array) > 1:
@@ -224,11 +240,13 @@ class HVO_Sequence(object):
         if not calculable:
             print("can't get offsets/utimings as there is no hvo score previously provided")
         else:
-            return self.hvo[:, 2 * self.number_of_voices:]
+            # Note that the value returned is the internal one - even if a hit is 0 at an index,
+            # offset at that same index might not be 0
+            return self.__hvo[:, 2 * self.number_of_voices:]
 
     def __is_offset_array_valid(self, offset_array):
         valid = True
-        if len(self.hvo[:, 2 * self.number_of_voices:]) != len(offset_array):
+        if len(self.__hvo[:, 2 * self.number_of_voices:]) != len(offset_array):
             valid = False
             print("offset array length mismatch")
         if np.min(offset_array) < -0.5 or np.max(offset_array) > 0.5:
@@ -1509,3 +1527,35 @@ class HVO_Sequence(object):
             fig.colorbar(spec, ax=ax, format="%+2.0f dB")
 
         fig.savefig(filename)
+
+    #   -------------------------------------------------------------
+    #   Method to get hvo in a flexible way
+    #   -------------------------------------------------------------
+
+    def get(self, hvo_str):
+        """
+        Flexible method to get hits, velocities and offsets in the desired order. The velocities
+        and offsets are synced to the hits, so whenever a hit is 0, velocities and offsets will be 0 as well.
+
+        Parameters
+        ----------
+        hvo_str: str
+            String formed with the characters 'h', 'v' and 'o' in any order. It's not necessary
+            to use all of the characters and they can be repeated. E.g. 'ov' or 'hvoh'
+        """
+
+        assert isinstance(hvo_str, str), 'hvo_str must be a string'
+        hvo_str = hvo_str.lower()
+        hvo_arr = []
+        tmp_hvo = self.hvo  # to avoid calling several times
+        for c in hvo_str:
+            assert (c == 'h' or c == 'v' or c == 'o'), 'hvo_str not valid'
+            concat_arr = tmp_hvo[:, :self.number_of_voices] if c == 'h'\
+                else tmp_hvo[:, self.number_of_voices:self.number_of_voices*2] if c == 'v'\
+                else tmp_hvo[:, self.number_of_voices*2:]
+            if len(hvo_arr) == 0:
+                hvo_arr = concat_arr
+            else:
+                hvo_arr = np.concatenate((hvo_arr, concat_arr), axis=1)
+
+        return hvo_arr
