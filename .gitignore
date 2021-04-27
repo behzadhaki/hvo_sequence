@@ -132,6 +132,9 @@ dmypy.json
 # IntelliJ IDE Settings
 .idea/
 
+#VSCode Settings
+.vscode/
+
 # Development notebooks
 .dev_notebooks/
 
