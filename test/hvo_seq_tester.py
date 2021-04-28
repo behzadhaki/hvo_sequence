@@ -44,7 +44,13 @@ if __name__ == "__main__":
     # print(hvo_seq.n_beats_per_segments)
     # hvo_seq.major_and_minor_grid_lines
     #
-    
+
+    oh = hvo_seq.get('oh')
+
+    h = hvo_seq.hits
+    v = hvo_seq.velocities
+    o = hvo_seq.offsets
+
     # Reset voices
     hvo_seq.reset_voices([2,3])
     hvo_seq.to_html_plot(show_figure=True)
