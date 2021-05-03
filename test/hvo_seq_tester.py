@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     # Add two time_signatures
     hvo_seq.add_time_signature(0, 4, 4, [4])
-    hvo_seq.add_time_signature(13, 6, 8, [3,2])
+    # hvo_seq.add_time_signature(13, 6, 8, [3,2])
 
     # Add two tempos
     hvo_seq.add_tempo(0, 50)
@@ -26,6 +26,7 @@ if __name__ == "__main__":
     # Add hvo score to hvo_seq instance
     hvo_seq.hvo = np.concatenate((hits, vels, offs), axis=1)
 
+    print(hvo_seq.get_bar_beat_hvo(hvo_str="hvo"))
     # Returns flattened hvo (or ho) vector
     #flat_hvo = hvo_seq.flatten_voices()
     #flat_hvo_voice_2 = hvo_seq.flatten_voices(voice_idx=2)

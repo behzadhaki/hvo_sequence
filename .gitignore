@@ -146,7 +146,7 @@ test/misc/temp_mel_spec.png
 
 
 # Folders to ignore
-GrooveToolbox
+GrooveToolbox/*
 HVO_SEQUENCE TUTORIAL.ipynb
 temp.html
 test/misc/temp.mid

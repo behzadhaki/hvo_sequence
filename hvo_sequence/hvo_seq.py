@@ -1531,7 +1531,7 @@ class HVO_Sequence(object):
         """
         Gets the offset portion of hvo and converts the values to ms using the associated grid
 
-        :return:    the hvo tensor in ms
+        :return:    the offsets in hvo tensor in ms
         """
         convertible = all([self.is_tempos_available(print_missing=True),
                            self.is_time_signatures_available(print_missing=True)])
