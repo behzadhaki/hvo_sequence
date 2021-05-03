@@ -63,6 +63,20 @@ ROLAND_REDUCED_MAPPING = {
     "RIDE":  [51, 53, 59]
 }
 
+# GrooveToolbox General MIDI Mappings
+Groove_Toolbox_GM_keymap = {
+    "kick": [35, 36],
+    "snare": [37, 38, 40],
+    "closed hihat": [42, 44],
+    "open hihat": [46],
+    "ride": [51, 53, 59],
+    "crash": [49, 57],
+    "extra cymbal": [52, 55],
+    "low tom": [41, 43, 45],
+    "mid tom": [47, 48],
+    "high tom": [50]
+}
+
 # https://bernhard.hensler.net/roland-td-11-setup-midi-mapping/
 # REF: https://rolandus.zendesk.com/hc/en-us/articles/360005173411-TD-17-Default-Factory-MIDI-Note-Map
 ROLAND_TD_17_Full_map = {
