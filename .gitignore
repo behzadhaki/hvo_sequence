@@ -143,3 +143,15 @@ test/misc/temp.html
 test/misc/temp.wav
 test/misc/temp_spec.png
 test/misc/temp_mel_spec.png
+
+
+# Folders to ignore
+GrooveToolbox
+HVO_SEQUENCE TUTORIAL.ipynb
+temp.html
+test/misc/temp.mid
+test/misc/test1.html
+test/misc/test1.mid
+test/misc/test1.wav
+test/misc/test2.html
+twin_axis.html

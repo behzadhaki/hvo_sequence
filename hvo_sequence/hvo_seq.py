@@ -6,7 +6,6 @@ import librosa
 import librosa.display
 import matplotlib.pyplot as plt
 from bokeh.plotting import output_file, show, save
-from bokeh.io import output_notebook
 from bokeh.models import Span, Label
 import warnings
 
@@ -1095,9 +1094,6 @@ class HVO_Sequence(object):
         flat_hvo = np.concatenate((_hits, _velocities, _offsets), axis=1) if get_velocities else np.concatenate((_hits, _offsets), axis=1)
         return flat_hvo
 
-
-
-
     #   --------------------------------------------------------------
     #   Utilities to import/export different score formats such as
     #       1. NoteSequence, 2. HVO array, 3. Midi
@@ -1497,7 +1493,7 @@ class HVO_Sequence(object):
     #   Method to get hvo in a flexible way
     #   -------------------------------------------------------------
 
-    def get(self, hvo_str):
+    def get(self, hvo_str, offsets_in_ms=False):
         """
         Flexible method to get hits, velocities and offsets in the desired order. The velocities
         and offsets are synced to the hits, so whenever a hit is 0, velocities and offsets will be 0 as well.
@@ -1507,6 +1503,10 @@ class HVO_Sequence(object):
         hvo_str: str
             String formed with the characters 'h', 'v' and 'o' in any order. It's not necessary
             to use all of the characters and they can be repeated. E.g. 'ov' or 'hvoh'
+
+        offsets_in_ms: bool
+            If true, the queried offsets will be provided in ms deviations from grid, otherwise, will be
+            provided in terms of ratios
         """
 
         assert isinstance(hvo_str, str), 'hvo_str must be a string'
@@ -1517,10 +1517,103 @@ class HVO_Sequence(object):
             assert (c == 'h' or c == 'v' or c == 'o'), 'hvo_str not valid'
             concat_arr = tmp_hvo[:, :self.number_of_voices] if c == 'h'\
                 else tmp_hvo[:, self.number_of_voices:self.number_of_voices*2] if c == 'v'\
-                else tmp_hvo[:, self.number_of_voices*2:]
+                else tmp_hvo[:, self.number_of_voices*2:] if offsets_in_ms is False \
+                else self.get_offsets_in_ms()
+
             if len(hvo_arr) == 0:
                 hvo_arr = concat_arr
             else:
                 hvo_arr = np.concatenate((hvo_arr, concat_arr), axis=1)
 
         return hvo_arr
+
+    def get_offsets_in_ms(self):
+        """
+        Gets the offset portion of hvo and converts the values to ms using the associated grid
+
+        :return:    the hvo tensor in ms
+        """
+        convertible = all([self.is_tempos_available(print_missing=True),
+                           self.is_time_signatures_available(print_missing=True)])
+
+        if not convertible:
+            warnings.warn("Above fields need to be provided so as to get the offsets in ms")
+            return None
+
+        # get the number of allowed drum voices
+        n_voices = len(self.__drum_mapping.keys())
+
+        # find nonzero hits tensor of [[position, drum_voice]]
+        pos_instrument_tensors = np.transpose(np.nonzero(self.__hvo[:, :n_voices]))
+
+        # create an empty offsets array
+        offsets = np.zeros_like(self.__hvo[:, :n_voices])
+
+        # Add notes to the NoteSequence object
+        for drum_event in pos_instrument_tensors:  # drum_event -> [grid_position, drum_voice_class]
+            grid_pos = drum_event[0]  # grid position
+            drum_voice_class = drum_event[1]  # drum_voice_class in range(n_voices)
+
+            # Grab the first note for each instrument group
+            utiming_ratio = self.__hvo[  # exact timing of the drum event (rel. to grid)
+                grid_pos, drum_voice_class + 2 * n_voices]
+
+            utiming = 0
+            if utiming_ratio < 0:
+                # if utiming comes left of grid, figure out the grid resolution left of the grid line
+                if grid_pos > 0:
+                    utiming = (self.grid_lines[grid_pos] - self.grid_lines[grid_pos - 1]) * \
+                              utiming_ratio
+                else:
+                    utiming = 0  # if utiming comes left of beginning,  snap it to the very first grid (loc[0]=0)
+            elif utiming_ratio > 0:
+                if grid_pos < (self.total_number_of_steps - 2):
+                    utiming = (self.grid_lines[grid_pos + 1] -
+                               self.grid_lines[grid_pos]) * utiming_ratio
+                else:
+                    utiming = (self.grid_lines[grid_pos] -
+                               self.grid_lines[grid_pos - 1]) * utiming_ratio
+                    # if utiming_ratio comes right of the last grid line, use the previous grid resolution for finding
+                    # the utiming value in ms
+
+            offsets[drum_event[0], drum_event[1]] = utiming*1000
+
+        return offsets
+
+    def get_bar_beat_hvo(self, hvo_str="hvo"):
+        """
+        returns the score organized as an array of shape (bar_idx, beat_idx, step_in_beat, len(hvo_str)*n_voices)
+
+        Note: If the number of bars is not an integer multiple, the sequence will be padded with -1's to denote the
+        padding
+
+        :param hvo_str:     String formed with the characters 'h', 'v' and 'o' in any order. It's not necessary
+                            to use all of the characters and they can be repeated. E.g. 'ov' or 'hvoh'
+
+        :return:            Score (possibly padded w/ -1s) shaped as
+                            (bar_idx, beat_idx, step_in_beat, len(hvo_str)*n_voices)
+        """
+
+        assert len(self.time_signatures) == 1, "This feature is not currently available for " \
+                                               "hvo scores with time signature change"
+
+        n_bars = int(np.ceil(sum(self.n_bars_per_segments)))
+        beats_per_bar = self.time_signatures[0].numerator
+        steps_per_beat_per_bar = self.steps_per_beat_per_segments[0]
+
+        total_steps = int(n_bars)*steps_per_beat_per_bar*beats_per_bar
+
+        hvo_arr = self.get(hvo_str)
+
+        dim_at_step = hvo_arr.shape[-1]
+
+        # Create an empty padded sequence
+        reshaped_hvo = np.zeros((total_steps, dim_at_step))-1
+
+        # fill sequence with existing score
+        reshaped_hvo[:hvo_arr.shape[0], :hvo_arr.shape[1]] = hvo_arr
+
+        # Reshape to (bar_index, beat_index, step_index, len(hvo_str)*n_voices)
+        reshaped_hvo = reshaped_hvo.reshape((n_bars, beats_per_bar, steps_per_beat_per_bar, dim_at_step))
+
+        return reshaped_hvo
