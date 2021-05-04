@@ -48,7 +48,7 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.0.1"
+        self.__version = "0.0.2"
 
         self.__time_signatures = list()
         self.__tempos = list()
