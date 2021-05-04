@@ -63,6 +63,23 @@ ROLAND_REDUCED_MAPPING = {
     "RIDE":  [51, 53, 59]
 }
 
+
+# GrooveToolbox 5 Part Kit Mappings
+Groove_Toolbox_5Part_keymap = {
+    "kick": [36, 35],
+    "snare": [38, 37, 40],
+    "closed": [42, 22, 44, 51, 53, 59],     # Closed cymbals (hihat and ride)
+    "open": [46, 26, 49, 52, 55, 57],       # Open cymbals (open hihat, crash)
+    "Toms": [43, 58, 47, 45, 50, 48, 41]    # Toms (low mid and high)
+}
+
+# GrooveToolbox 3 Part Kit Mappings
+Groove_Toolbox_3Part_keymap = {
+    "low": [36, 35],                                        # Kick
+    "mid": [38, 37, 40, 43, 58, 47, 45, 50, 48, 41],        # Snare and Tom
+    "hi": [42, 22, 44, 51, 53, 59, 46, 26, 49, 52, 55, 57]  # Hats/Crashes/Rides
+}
+
 # GrooveToolbox General MIDI Mappings
 Groove_Toolbox_GM_keymap = {
     "kick": [35, 36],

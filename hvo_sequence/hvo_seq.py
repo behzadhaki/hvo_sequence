@@ -11,7 +11,10 @@ import warnings
 
 from hvo_sequence.utils import is_power_of_two, create_grid_for_n_bars, find_pitch_and_tag
 from hvo_sequence.custom_dtypes import Tempo, Time_Signature
-
+from hvo_sequence.feature_extractors import CompleteFeatureExtractor, convert_groove_toolbox, GrooveToolbox
+from hvo_sequence.drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
+from hvo_sequence.distance_measures import weighted_Hamming_distance, fuzzy_Hamming_distance
+from hvo_sequence.distance_measures import structural_similarity_distance, cosine_similarity, cosine_distance
 
 class HVO_Sequence(object):
 
@@ -1617,3 +1620,149 @@ class HVO_Sequence(object):
         reshaped_hvo = reshaped_hvo.reshape((n_bars, beats_per_bar, steps_per_beat_per_bar, dim_at_step))
 
         return reshaped_hvo
+
+    #   -------------------------------------------------------------
+    #   Extract Rhythmical and Microtiming Features for Evaluation
+    #   -------------------------------------------------------------
+
+    def get_all_analysis_features(self):
+        FeatureExtractor = CompleteFeatureExtractor(self, _5kitparts_map=Groove_Toolbox_5Part_keymap,
+                                                    _3kitparts_map=Groove_Toolbox_3Part_keymap)
+
+        return FeatureExtractor.get_feature_dictionary()
+
+    #   -------------------------------------------------------------
+    #   Similarity/Distance Calculators
+    #   -------------------------------------------------------------
+
+    def calculate_all_distances_with(self, hvo_seq_b):
+
+        distances_dictionary = {
+            "l1_distance_hvo": self.calculate_l1_distance_with(hvo_seq_b),
+            "l1_distance_h": self.calculate_l1_distance_with(hvo_seq_b, "h"),
+            "l1_distance_v": self.calculate_l1_distance_with(hvo_seq_b, "v"),
+            "l1_distance_o": self.calculate_l1_distance_with(hvo_seq_b, "o"),
+            "l2_distance_hvo": self.calculate_l2_distance_with(hvo_seq_b),
+            "l2_distance_h": self.calculate_l2_distance_with(hvo_seq_b, "h"),
+            "l2_distance_v": self.calculate_l2_distance_with(hvo_seq_b, "v"),
+            "l2_distance_o": self.calculate_l2_distance_with(hvo_seq_b, "o"),
+            "cosine_distance": self.calculate_cosine_distance_with(hvo_seq_b),
+            "cosine_similarity": self.calculate_cosine_similarity_with(hvo_seq_b),
+            "hamming_distance_all_voices_not_weighted":  self.calculate_hamming_distance_with(
+                hvo_seq_b,reduction_map=None,beat_weighting=False),
+            "hamming_distance_all_voices_weighted": self.calculate_hamming_distance_with(
+                hvo_seq_b, reduction_map=None, beat_weighting=True),
+            "hamming_distance_low_mid_hi_not_weighted": self.calculate_hamming_distance_with(
+                hvo_seq_b, reduction_map=Groove_Toolbox_3Part_keymap, beat_weighting=False),
+            "hamming_distance_low_mid_hi_weighted": self.calculate_hamming_distance_with(
+                hvo_seq_b, reduction_map=Groove_Toolbox_3Part_keymap, beat_weighting=True),
+            "hamming_distance_5partKit_not_weighted": self.calculate_hamming_distance_with(
+                hvo_seq_b, reduction_map=Groove_Toolbox_5Part_keymap, beat_weighting=False),
+            "hamming_distance_5partKit_weighted": self.calculate_hamming_distance_with(
+                hvo_seq_b, reduction_map=Groove_Toolbox_5Part_keymap, beat_weighting=True),
+            "fuzzy_hamming_distance_not_weighted": self.calculate_fuzzy_hamming_distance_with(
+                hvo_seq_b, beat_weighting=False),
+            "fuzzy_hamming_distance_weighted": self.calculate_fuzzy_hamming_distance_with(
+                hvo_seq_b, beat_weighting=True),
+            "structural_similarity_distance":  self.calculate_structural_similarity_distance_with(hvo_seq_b)
+        }
+
+        return distances_dictionary
+
+    def calculate_l1_distance_with(self, hvo_seq_b, hvo_str="hvo"):
+        """
+        :param hvo_seq_b:   Sequence to find l1 norm of euclidean distance with
+        :param hvo_str:     String formed with the characters 'h', 'v' and 'o' in any order. It's not necessary
+                            to use all of the characters and they can be repeated. E.g. 'ov' or 'hvoh'
+        :return:            l1 norm of euclidean distance with hvo_seq_b
+        """
+        a = self.get(hvo_str).flatten()
+        b = hvo_seq_b.get(hvo_str).flatten()
+        return np.linalg.norm((a - b), ord=1)
+
+    def calculate_l2_distance_with(self, hvo_seq_b, hvo_str="hvo"):
+        """
+        :param hvo_seq_b:   Sequence to find l2 norm of euclidean distance with
+        :param hvo_str:     String formed with the characters 'h', 'v' and 'o' in any order. It's not necessary
+                            to use all of the characters and they can be repeated. E.g. 'ov' or 'hvoh'
+        :return:            l2 norm of euclidean distance with hvo_seq_b
+        """
+        a = self.get(hvo_str).flatten()
+        b = hvo_seq_b.get(hvo_str).flatten()
+        return np.linalg.norm((a - b), ord=2)
+
+    def calculate_cosine_similarity_with(self, hvo_seq_b):
+        """
+        Calculates cosine similarity with secondary sequence
+        Calculates the cosine of the angle between flattened hvo scores (flatten into 1d)
+
+        :param hvo_seq_b: a secondary hvo_sequence to measure similarity with
+        :return:
+            a value between -1 and 1 --> 1. 0 when sequences are equal, 0 when they are "perpendicular"
+        """
+        return cosine_similarity(self, hvo_seq_b)
+
+    def calculate_cosine_distance_with(self, hvo_seq_b):
+        # returns 1 - cosine_similarity
+        # returns 0 when equal and 1 when "perpendicular"
+        return cosine_distance(self, hvo_seq_b)
+
+    def calculate_hamming_distance_with(self, hvo_seq_b, reduction_map=None, beat_weighting=False):
+        """
+        Calculates the vanilla hamming distance between the current hvo_seq and a target sequence
+
+        :param hvo_seq_b:       target sequence from which the distance is measured
+        :param reduction_map:   None:       Calculates distance as is
+                                reduction_map: an alternative drum mapping to reduce the score
+                                               options available in drum_mappings.py:
+                                                1.      Groove_Toolbox_3Part_keymap (low, mid, hi)
+                                                2.      Groove_Toolbox_5Part_keymap (kick, snare, closed, open, tom)
+
+        :param beat_weighting:  If true, weights time steps using a 4/4 metrical awareness weights
+        :return:
+            distance:           abs value of distance between sequences
+        """
+        groove_a = GrooveToolbox(self, _5kitparts_map=Groove_Toolbox_5Part_keymap,
+                                 _3kitparts_map=Groove_Toolbox_3Part_keymap, extract_features=False)
+        groove_b = GrooveToolbox(hvo_seq_b, _5kitparts_map=Groove_Toolbox_5Part_keymap,
+                                 _3kitparts_map=Groove_Toolbox_3Part_keymap, extract_features=False)
+
+        if reduction_map is not None:
+            groove_a = convert_groove_toolbox(groove_a, self.drum_mapping, reduction_map)
+            groove_b = convert_groove_toolbox(groove_b, self.drum_mapping, reduction_map)
+
+        return weighted_Hamming_distance(groove_a, groove_b, beat_weighting=beat_weighting)
+
+    def calculate_fuzzy_hamming_distance_with(self, hvo_seq_b, beat_weighting=False):
+        """
+        Calculates the vanilla hamming distance between the current hvo_seq and a target sequence
+
+        :param hvo_seq_b:       target sequence from which the distance is measured
+
+        :param beat_weighting:  If true, weights time steps using a 4/4 metrical awareness weights
+        :return:
+            distance:           abs value of distance between sequences
+        """
+        groove_a = GrooveToolbox(self, _5kitparts_map=Groove_Toolbox_5Part_keymap,
+                                 _3kitparts_map=Groove_Toolbox_3Part_keymap, extract_features=False)
+        groove_b = GrooveToolbox(hvo_seq_b, _5kitparts_map=Groove_Toolbox_5Part_keymap,
+                                 _3kitparts_map=Groove_Toolbox_3Part_keymap, extract_features=False)
+
+        return fuzzy_Hamming_distance(groove_a, groove_b, beat_weighting=beat_weighting)
+
+    def calculate_structural_similarity_distance_with(self, hvo_seq_b):
+        """
+        Calculates the vanilla hamming distance between the current hvo_seq and a target sequence
+
+        :param hvo_seq_b:       target sequence from which the distance is measured
+
+        :param beat_weighting:  If true, weights time steps using a 4/4 metrical awareness weights
+        :return:
+            distance:           abs value of distance between sequences
+        """
+        groove_a = GrooveToolbox(self, _5kitparts_map=Groove_Toolbox_5Part_keymap,
+                                 _3kitparts_map=Groove_Toolbox_3Part_keymap, extract_features=False)
+        groove_b = GrooveToolbox(hvo_seq_b, _5kitparts_map=Groove_Toolbox_5Part_keymap,
+                                 _3kitparts_map=Groove_Toolbox_3Part_keymap, extract_features=False)
+
+        return structural_similarity_distance(groove_a, groove_b)

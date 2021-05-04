@@ -1,101 +1,277 @@
-import hvo_sequence.drum_mappings
-
-
 import numpy as np
 from pandas.plotting import autocorrelation_plot
 import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.signal import find_peaks
 import math
+from hvo_sequence.drum_mappings import ROLAND_REDUCED_MAPPING, Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
 
-# def get hits
-# def get offsets --> in ms
-# def 5 part map
-# 3 part map
 
-class NewGroove():
-    def __init__(self, hits_matrix, timing_matrix, tempo, extract_features=True, velocity_type="Regular", name="Groove"):
+class CompleteFeatureExtractor:
+    """
+    Calculates all of the following features from an hvo_seq object
+
+    # GrooveToolbox.RhythmFeatures
+        # --------------------------------------
+        total_autocorrelation_curve
+        combined_syncopation
+        polyphonic_syncopation
+        low_syncopation
+        mid_syncopation
+        high_syncopation
+        low_density
+        mid_density
+        high_density
+        total_density
+        hiness
+        midness
+        lowness
+        hisyncness
+        midsyncness
+        lowsyncness
+        autocorrelation_skew
+        autocorrelation_max_amplitude
+        autocorrelation_centroid
+        autocorrelation_harmonicity
+        total_symmetry
+        total_average_intensity
+        total_weak_to_strong_ratio
+        total_complexity
+
+    # GrooveToolbox.MicrotimingFeatures
+        # --------------------------------------
+        swingness
+        is_swung
+        laidbackness
+        timing_accuracy
+    """
+
+    def __init__(self, hvo_seq, _5kitparts_map, _3kitparts_map):
+        self.features_dictionary = None
+
+        # #############################################################
+        #                   GrooveToolBox Features
+        #        Create an Instance of the GrooveToolbox to calculate
+        #        the rhythm and microtiming info implemented in the toolbox
+        # #############################################################
+
+        # Create an instance of GrooveToolbox
+        self.groove_toolbox = GrooveToolbox(
+            hvo_seq, _5kitparts_map=_5kitparts_map,
+            _3kitparts_map=_3kitparts_map)
+
+        # #############################################################
+        #                   Spectral Features
+        #        Create and instance of the SpectralFeatures to calculate
+        #        the spectral features
+        # #############################################################
+
+        # Create an instance of the SpectralFeatures class
+        self.spectral_features = SpectralFeatures(hvo_seq)
+
+    def get_feature_dictionary(self):
+        self.groove_toolbox.RhythmFeatures.calculate_all_features()
+        self.groove_toolbox.MicrotimingFeatures.calculate_all_features()
+
+        self.features_dictionary = {
+            # GrooveToolbox.RhythmFeatures
+            # --------------------------------------
+            "combined_syncopation": self.groove_toolbox.RhythmFeatures.combined_syncopation,
+            "polyphonic_syncopation": self.groove_toolbox.RhythmFeatures.polyphonic_syncopation,
+            "low_syncopation": self.groove_toolbox.RhythmFeatures.low_syncopation,
+            "mid_syncopation": self.groove_toolbox.RhythmFeatures.mid_syncopation,
+            "high_syncopation": self.groove_toolbox.RhythmFeatures.high_syncopation,
+            "low_density": self.groove_toolbox.RhythmFeatures.low_density,
+            "mid_density": self.groove_toolbox.RhythmFeatures.mid_density,
+            "high_density": self.groove_toolbox.RhythmFeatures.high_density,
+            "total_density": self.groove_toolbox.RhythmFeatures.total_density,
+            "hiness": self.groove_toolbox.RhythmFeatures.hiness,
+            "midness": self.groove_toolbox.RhythmFeatures.midness,
+            "lowness": self.groove_toolbox.RhythmFeatures.lowness,
+            "hisyncness": self.groove_toolbox.RhythmFeatures.hisyncness,
+            "midsyncness": self.groove_toolbox.RhythmFeatures.midsyncness,
+            "lowsyncness": self.groove_toolbox.RhythmFeatures.lowsyncness,
+            "total_autocorrelation_curve": self.groove_toolbox.RhythmFeatures.total_autocorrelation_curve,
+            "autocorrelation_skew": self.groove_toolbox.RhythmFeatures.autocorrelation_skew,
+            "autocorrelation_max_amplitude": self.groove_toolbox.RhythmFeatures.autocorrelation_max_amplitude,
+            "autocorrelation_centroid": self.groove_toolbox.RhythmFeatures.autocorrelation_centroid,
+            "autocorrelation_harmonicity": self.groove_toolbox.RhythmFeatures.autocorrelation_harmonicity,
+            "total_symmetry": self.groove_toolbox.RhythmFeatures.total_symmetry,
+            "total_average_intensity": self.groove_toolbox.RhythmFeatures.total_average_intensity,
+            "total_weak_to_strong_ratio": self.groove_toolbox.RhythmFeatures.total_weak_to_strong_ratio,
+            "total_complexity": self.groove_toolbox.RhythmFeatures.total_complexity,
+
+            # GrooveToolbox.MicrotimingFeatures
+            # --------------------------------------
+            "swingness": self.groove_toolbox.MicrotimingFeatures.swingness,
+            "is_swung": self.groove_toolbox.MicrotimingFeatures.is_swung,
+            "laidbackness": self.groove_toolbox.MicrotimingFeatures.laidbackness,
+            "timing_accuracy": self.groove_toolbox.MicrotimingFeatures.timing_accuracy
+
+            # Spectral Features
+            # --------------------------------------
+            # "onset_confidence": None
+            # todo: add features here when the method is implemented
+        }
+
+        return self.features_dictionary
+
+#######################################################################
+#                  Audio/Spectral Based Features
+#
+#        to implement
+#               1. Multi-voice onset confidence
+#               2. Tapped onset confidence
+#               3. ConstQ Transformed Spectral Flux
+#
+#######################################################################
+
+
+# todo: Implement the audio based features here
+class SpectralFeatures:
+    def __init__(self, hvo_seq):
+        self.spectral_features_dict = None
+        return
+
+    def calculate_all_features(self):
+        self.spectral_features_dict = dict()
+        return self.spectral_features_dict
+
+
+#######################################################################
+#        Rhythmic and Micro-timing Features from GrooveToolbox
+#
+#        The following code is mostly from the GrooveToolbox
+#              https://github.com/fredbru/GrooveToolbox
+#        Some additional functions have been implemented here
+#         to adapt hvo_sequence representation to the groove and
+#            utiming representations used in the GrooveToolbox
+#
+# Reference:    Yang, Li-Chia, and Alexander Lerch. "On the evaluation
+#               of generative models in music." Neural Computing
+#               and Applications 32.9 (2020): 4773-4784.
+#######################################################################
+
+def get_tgt_map_index_for_src_map(src_map, tgt_map):
+    """
+    Finds the corresponding voice group index for
+    :param src_map:   a drum_mapping dictionary
+    :param tgt_map:     a drum_mapping dictionary
+    :return: list of same len as src_map. Each element in returned list is the corresponding voice group to be used in
+             tgt_map for each of the voice groups in the src_map
+
+            Example:
+            if src_map = ROLAND_REDUCED_MAPPING and tgt_map = Groove_Toolbox_5Part_keymap
+            the return will be [0, 1, 2, 3, 4, 4, 4, 3, 2]
+            this means that kicks are to be mapped to kick
+                            snares are to be mapped to snares
+                            c_hat and rides are to be mapped to the same group (closed)
+                            o_hat and crash are to be mapped to the same group (open)
+                            low. mid. hi Toms are to be mapped to the same group (toms)
+
+    """
+    src_ix_to_tgt_ix_map = []
+    for src_voice_ix, src_voice_midi_list in enumerate(src_map.values()):
+        corresponding_tgt_indices = []
+        for tgt_voice_ix, tgt_voice_midi_list in enumerate(tgt_map.values()):
+            if src_voice_midi_list[0] in tgt_voice_midi_list:
+                corresponding_tgt_indices.append(tgt_voice_ix)
+        src_ix_to_tgt_ix_map.append(max(corresponding_tgt_indices, key=corresponding_tgt_indices.count))
+
+    return src_ix_to_tgt_ix_map
+
+
+def convert_groove(groove, src_map, tgt_map):
+    # Groove is a velocity matrix here
+    src_ix_to_tgt_ix_map = get_tgt_map_index_for_src_map(src_map, tgt_map)
+
+    n_steps = groove.shape[0]
+    target_groove = np.zeros((n_steps, len(tgt_map.keys())))
+
+    for src_voice_ix, groove_row in enumerate(np.transpose(groove)):
+        tgt_voice_ix = src_ix_to_tgt_ix_map[src_voice_ix]
+        target_groove[:, tgt_voice_ix] = np.clip(target_groove[:, tgt_voice_ix] + groove_row, 0, 1)
+
+    return target_groove
+
+def convert_groove_toolbox(grooveToolbox, src_map, tgt_map):
+    # Converts the score in the groovetoolbox instance
+    src_ix_to_tgt_ix_map = get_tgt_map_index_for_src_map(src_map, tgt_map)
+
+    n_steps = grooveToolbox.groove_all_parts.shape[0]
+    target_groove = np.zeros((n_steps, len(tgt_map.keys())))
+
+    for src_voice_ix, groove_row in enumerate(np.transpose(grooveToolbox.groove_all_parts)):
+        tgt_voice_ix = src_ix_to_tgt_ix_map[src_voice_ix]
+        target_groove[:, tgt_voice_ix] = np.clip(target_groove[:, tgt_voice_ix] + groove_row, 0, 1)
+
+    grooveToolbox.groove_all_parts = target_groove
+    return grooveToolbox
+
+class GrooveToolbox:
+    def __init__(self, hvo_seq, _5kitparts_map, _3kitparts_map, extract_features=True,
+                 velocity_type="Regular", name="Groove"):
         # extractFeatures - if True (default), extract all features upon groove creation.
         # Set false if you don't need all features - instead retrieve as and when you need them
 
-        self.groove_10_parts = hits_matrix
-        self.timing_matrix = timing_matrix
+        assert len(hvo_seq.time_signatures) == 1, \
+            "Currently time signature changes are not supported for feature extractions"
+
+        assert hvo_seq.time_signatures[0].numerator == 4 and hvo_seq.time_signatures[0].denominator == 4, \
+            "Currently only 4/4 time_signatures are supported for feature extractions"
+
+        assert hvo_seq.time_signatures[0].numerator == 4 and hvo_seq.time_signatures[0].denominator == 4, \
+            "Currently only 16th note quantization (beat_division_factor=[4]) is supported  for feature extractions"
+
+        assert hvo_seq.hvo.shape[0] == 32 or hvo_seq.hvo.shape[0] == 16, \
+            "Currently only 16 or 32 time steps are supported"
+
+        if hvo_seq.hvo.shape[0] == 16:
+            hvo_seq.hvo = np.concatenate([hvo_seq.hvo, hvo_seq.hvo])
+            print("hvo_seq.hvo.shape", hvo_seq.hvo.shape)
+
+        self.groove_all_parts = hvo_seq.get("v")
+        self.timing_matrix = hvo_seq.get("o", offsets_in_ms=True)
+        tempo = hvo_seq.tempos[0].qpm
+
+        self.all_parts_map = hvo_seq.drum_mapping
+        self._5kitParts_map = _5kitparts_map
+        self._3kitParts_map = _3kitparts_map
+
         self.name = name
 
         if velocity_type == "None":
-            self.groove_10_parts = np.ceil(self.groove_10_parts)
+            self.groove_all_parts = np.ceil(self.groove_all_parts)
         if velocity_type == "Regular":
             pass
         if velocity_type == "Transform":
-            self.groove_10_parts = np.power(self.groove_10_parts, 0.2)
+            self.groove_all_parts = np.power(self.groove_all_parts, 0.2)
 
-        self.groove_5_parts = self._groupGroove5KitParts()
-        self.groove_3_parts = self._groupGroove3KitParts()
+        self.groove_5_parts = convert_groove(self.groove_all_parts, self.all_parts_map, self._5kitParts_map)
+        self.groove_3_parts = convert_groove(self.groove_all_parts, self.all_parts_map, self._3kitParts_map)
 
-        self.RhythmFeatures = RhythmFeatures(self.groove_10_parts, self.groove_5_parts, self.groove_3_parts)
+        self.RhythmFeatures = RhythmFeatures(self.groove_all_parts, self.groove_5_parts, self.groove_3_parts,
+                                             self.all_parts_map, self._5kitParts_map, self._3kitParts_map)
         self.MicrotimingFeatures = MicrotimingFeatures(self.timing_matrix, tempo)
 
         if extract_features:
             self.RhythmFeatures.calculate_all_features()
             self.MicrotimingFeatures.calculate_all_features()
 
-    def _groupGroove5KitParts(self):
-        # Group kit parts into 5 polyphony levels
-        # Only works for groove files - not microtiming (less important to group microtiming).
-        # 0 - Kick
-        # 1 - Snare
-        # 2 - Closed cymbals (hihat and ride)
-        # 3 - Open cymbals (open hihat, crash and extra cymbal
-        # 4 - Toms (low mid and high)
-
-        kick = 0
-        snare = 1
-        closed_hihat = 2
-        open_hihat = 3
-        ride = 4
-        crash = 5
-        extra_cymbal = 6
-        low_tom = 7
-        mid_tom = 8
-        high_tom = 9
-
-        groove_5_parts = np.zeros([self.groove_10_parts.shape[0],5])
-        groove_5_parts[:,0] = self.groove_10_parts[:,kick]
-        groove_5_parts[:,1] = self.groove_10_parts[:,snare]
-        groove_5_parts[:,2] = np.clip([self.groove_10_parts[:,closed_hihat] + self.groove_10_parts[:,ride]],0,1)
-        groove_5_parts[:,3] = np.clip([self.groove_10_parts[:,open_hihat] + self.groove_10_parts[:,crash] + self.groove_10_parts[:,extra_cymbal]],0,1)
-        groove_5_parts[:,4] = np.clip([self.groove_10_parts[:,low_tom] + self.groove_10_parts[:,mid_tom] + self.groove_10_parts[:,high_tom]],0,1)
-        return groove_5_parts
-
-    def _groupGroove3KitParts(self): #todo: check this is working correctly for toms (same with 5 part function)
-        # Group kit pieces into 3 parts low (kick), mid (snare + toms) and high (cymbals)
-
-        kick = self.groove_5_parts[:, 0]
-        snare = self.groove_5_parts[:, 1]
-        closed = self.groove_5_parts[:, 2]
-        open = self.groove_5_parts[:, 3]
-        toms = self.groove_5_parts[:, 4]
-
-        low = kick
-        mid = np.nansum(np.dstack((snare, toms)), 2)
-        high = np.nansum(np.dstack((closed, open)), 2)
-
-        return np.vstack([low,mid[0,:],high[0,:]]).T
-
     def reduce_groove(self):
         # Remove ornamentation from a groove to return a simplified representation of the rhythm structure
         # change salience profile for different metres etc
         metrical_profile = [0, -2, -1, -2, 0, -2, -1, -2, -0, -2, -1, -2, -0, -2, -1, -2,
-                           0, -2, -1, -2, 0, -2, -1, -2, 0, -2, -1, -2, 0, -2, -1, -2]
-        self.reduced_groove = np.zeros(self.groove_10_parts.shape)
-        for i in range(10): #10 parts to reduce
-            self.reduced_groove[:,i] = self._reduce_part(self.groove_10_parts[:,i],metrical_profile)
+                            0, -2, -1, -2, 0, -2, -1, -2, 0, -2, -1, -2, 0, -2, -1, -2]
+        self.reduced_groove = np.zeros(self.groove_all_parts.shape)
+        for i in range(len(self.all_parts_map.keys())):     # number of parts to reduce
+            self.reduced_groove[:, i] = self._reduce_part(self.groove_all_parts[:, i], metrical_profile)
         rows_to_remove = [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19, 21, 22, 23, 25, 26, 27, 29, 30, 31]
         self.reduced_groove = np.delete(self.reduced_groove, rows_to_remove, axis=0)
         return self.reduced_groove
 
     def _reduce_part(self, part, metrical_profile):
-        length = self.groove_10_parts.shape[0]
+        length = self.groove_all_parts.shape[0]
         for i in range(length):
             if part[i] <= 0.4:
                 part[i] = 0
@@ -128,21 +304,49 @@ class NewGroove():
         return part
 
 
+class RhythmFeatures:
+    def __init__(self, groove_all_parts, groove_5_parts, groove_3_parts,
+                 all_parts_map, _5kitparts_map, _3kitparts_map):
 
-class RhythmFeatures():
-    def __init__(self, groove_10_parts, groove_5_parts, groove_3_parts):
-        self.groove_10_parts = groove_10_parts
+        self.all_parts_map = all_parts_map
+        self._5kitParts_map = _5kitparts_map
+        self._3kitParts_map = _3kitparts_map
 
+        self.groove_all_parts = groove_all_parts
         self.groove_5_parts = groove_5_parts
         self.groove_3_parts = groove_3_parts
-        self.total_autocorrelation_curve = None
 
-        #todo: Do I want to list names of class variables in here? So user can see them easily?
+        self.total_autocorrelation_curve = None
+        self.combined_syncopation = None
+        self.polyphonic_syncopation = None
+        self.low_syncopation = None
+        self.mid_syncopation = None
+        self.high_syncopation = None
+        self.low_density = None
+        self.mid_density = None
+        self.high_density = None
+        self.total_density = None
+        self.hiness = None
+        self.midness = None
+        self.lowness = None
+        self.hisyncness = None
+        self.midsyncness = None
+        self.lowsyncness = None
+        self.autocorrelation_skew = None
+        self.autocorrelation_max_amplitude = None
+        self.autocorrelation_centroid = None
+        self.autocorrelation_harmonicity = None
+        self.total_symmetry = None
+        self.total_average_intensity = None
+        self.total_weak_to_strong_ratio = None
+        self.total_complexity = None
+
+        # todo: Do I want to list names of class variables in here? So user can see them easily?
 
     def calculate_all_features(self):
         # Get all standard features in one go
         self.combined_syncopation = self.get_combined_syncopation()
-        self.polyphonic_syncopation =self.get_polyphonic_syncopation()
+        self.polyphonic_syncopation = self.get_polyphonic_syncopation()
         self.low_syncopation = self.get_low_syncopation()
         self.mid_syncopation = self.get_mid_syncopation()
         self.high_syncopation = self.get_high_syncopation()
@@ -151,7 +355,11 @@ class RhythmFeatures():
         self.high_density = self.get_high_density()
         self.total_density = self.get_total_density()
         self.hiness = self.get_hiness()
+        self.midness = self.get_midness()
+        self.lowness = self.get_lowness()
         self.hisyncness = self.get_hisyncness()
+        self.midsyncness = self.get_midsyncness()
+        self.lowsyncness = self.get_lowsyncness()
         self.autocorrelation_skew = self.get_autocorrelation_skew()
         self.autocorrelation_max_amplitude = self.get_autocorrelation_max_amplitude()
         self.autocorrelation_centroid = self.get_autocorrelation_centroid()
@@ -176,6 +384,12 @@ class RhythmFeatures():
         print("Mid Syncopation = " + str(self.mid_syncopation))
         print("High Syncopation = " + str(self.high_syncopation))
         print("Total Density = " + str(self.total_density))
+        print("hiness = " + str(self.hiness))
+        print("midness = " + str(self.midness))
+        print("lowness = " + str(self.lowness))
+        print("hisyncness = " + str(self.hisyncness))
+        print("midsyncness = " + str(self.midsyncness))
+        print("lowsyncness = " + str(self.lowsyncness))
         print("Low Density = " + str(self.low_density))
         print("Mid Density = " + str(self.mid_density))
         print("High Density = " + str(self.high_density))
@@ -187,14 +401,13 @@ class RhythmFeatures():
         print("Autocorrelation Harmonicity = " + str(self.autocorrelation_harmonicity))
         print("Symmetry = " + str(self.total_symmetry))
 
-
     def get_combined_syncopation(self):
         # Calculate syncopation as summed across all kit parts.
         # Tested - working correctly (12/3/20)
 
         self.combined_syncopation = 0.0
-        for i in range(self.groove_10_parts.shape[1]):
-            self.combined_syncopation += self.get_syncopation_1part(self.groove_10_parts[:,i])
+        for i in range(self.groove_all_parts.shape[1]):
+            self.combined_syncopation += self.get_syncopation_1part(self.groove_all_parts[:,i])
         return self.combined_syncopation
 
     def get_polyphonic_syncopation(self):
@@ -258,7 +471,7 @@ class RhythmFeatures():
             elif next_hit == "None":
                 if metrical_profile[k] > metrical_profile[i]:
                     difference = max(metrical_profile[(i + 1) % 32], metrical_profile[(i + 2) % 32]) - metrical_profile[i]
-                    kick_syncopation = difference + 6 # if rest on a stronger beat - one stream sync, high sync valuef
+                    kick_syncopation = difference + 6 # if rest on a stronger beat - one stream sync, high sync value
         return kick_syncopation
 
     def _get_snare_syncopation(self, low, mid, high, i, metrical_profile):
@@ -325,7 +538,7 @@ class RhythmFeatures():
         return syncopation / max_syncopation
 
     def get_average_intensity(self, part):
-        # Get average loudness for any signle part or group of parts. Will return 1 for binary loop, otherwise calculate
+        # Get average loudness for any single part or group of parts. Will return 1 for binary loop, otherwise calculate
         # based on velocity mode chosen (transform or regular)
 
         # first get all non-zero hits. then divide by number of hits
@@ -345,7 +558,7 @@ class RhythmFeatures():
 
     def get_total_average_intensity(self):
         # Get average loudness for every hit in a loop
-        self.total_average_intensity = self.get_average_intensity(self.groove_10_parts)
+        self.total_average_intensity = self.get_average_intensity(self.groove_all_parts)
         return self.total_average_intensity
 
     def get_weak_to_strong_ratio(self, part):
@@ -370,26 +583,23 @@ class RhythmFeatures():
         return weakToStrongRatio
 
     def get_total_weak_to_strong_ratio(self): #todo: test
-        self.total_weak_to_strong_ratio = self.get_weak_to_strong_ratio(self.groove_10_parts)
+        self.total_weak_to_strong_ratio = self.get_weak_to_strong_ratio(self.groove_all_parts)
         return self.total_weak_to_strong_ratio
 
     def get_low_syncopation(self):
         # Get syncopation of low part (kick drum)
-        self.low_syncopation = self.get_syncopation_1part(self.groove_10_parts[:,0])
+        self.low_syncopation = self.get_syncopation_1part(self.groove_3_parts[:, 0])
         return self.low_syncopation
 
     def get_mid_syncopation(self):
         # Get syncopation of mid parts - summed snare and tom parts
-        midParts = np.clip(self.groove_10_parts[:,1] + self.groove_10_parts[:,7] + self.groove_10_parts[:,8] +
-                             self.groove_10_parts[:,9],0,1)
+        midParts = self.groove_3_parts[:, 1]
         self.mid_syncopation = self.get_syncopation_1part(midParts)
         return self.mid_syncopation
 
     def get_high_syncopation(self):
         # Get syncopation of high parts - summed cymbals
-
-        highParts = np.clip(self.groove_10_parts[:,2] + self.groove_10_parts[:,3] + self.groove_10_parts[:,4] +
-                            self.groove_10_parts[:, 5] + self.groove_10_parts[:,6],0,1)
+        highParts = self.groove_3_parts[:, 2]
         self.high_syncopation = self.get_syncopation_1part(highParts)
         return self.high_syncopation
 
@@ -408,47 +618,87 @@ class RhythmFeatures():
 
     def get_low_density(self):
         # Get density of low part (kick)
+        src_ix_to_tgt_ix_map = np.array(get_tgt_map_index_for_src_map(self.all_parts_map, self._3kitParts_map))
+        low_indices = np.where(src_ix_to_tgt_ix_map == 0)
+        low_parts = list()
+        for low_index in low_indices:
+            low_parts.append(self.groove_all_parts[:, low_index])
+        low_parts = np.vstack([low_parts])
+        self.low_density = self.get_density(low_parts.T)
 
-        self.low_density = self.get_density(self.groove_10_parts[:,0])
         return self.low_density
 
     def get_mid_density(self):
         # Get density of mid parts (toms and snare)
-
-        midParts = np.vstack([self.groove_10_parts[:,1], self.groove_10_parts[:,7], self.groove_10_parts[:,8],
-                             self.groove_10_parts[:,9]])
-        self.mid_density = self.get_density(midParts.T)
+        src_ix_to_tgt_ix_map = np.array(get_tgt_map_index_for_src_map(self.all_parts_map, self._3kitParts_map))
+        mid_indices = np.where(src_ix_to_tgt_ix_map == 1)
+        mid_parts = list()
+        for mid_index in mid_indices:
+            mid_parts.append(self.groove_all_parts[:, mid_index])
+        mid_parts = np.vstack(mid_parts)
+        self.mid_density = self.get_density(mid_parts.T)
         return self.mid_density
 
     def get_high_density(self):
         # Get density of high parts (cymbals)
-
-        highParts = np.vstack([self.groove_10_parts[:,2], self.groove_10_parts[:,3], self.groove_10_parts[:,4],
-                             self.groove_10_parts[:,5],self.groove_10_parts[:,6]])
-        self.high_density = self.get_density(highParts.T)
+        src_ix_to_tgt_ix_map = np.array(get_tgt_map_index_for_src_map(self.all_parts_map, self._3kitParts_map))
+        hi_indices = np.where(src_ix_to_tgt_ix_map == 2)
+        hi_parts = list()
+        for hi_index in hi_indices:
+            hi_parts.append(self.groove_all_parts[:, hi_index])
+        hi_parts = np.vstack(hi_parts)
+        self.high_density = self.get_density(hi_parts.T)
         return self.high_density
 
     def get_total_density(self):
         # Get total density calculated over 10 parts.
         # Total density = number of onsets / number of possible onsets (= length of pattern x 10)
         # Return values tend to be very low for this, due to high numbers of parts meaning sparse
-        # matricies.
+        # matrices.
 
-        total_step_count = self.groove_10_parts.size
-        onset_count = np.count_nonzero(np.ceil(self.groove_10_parts) == 1)
-        average_velocity = self.groove_10_parts[self.groove_10_parts!=0.0].mean()
+        total_step_count = self.groove_all_parts.size
+        onset_count = np.count_nonzero(np.ceil(self.groove_all_parts) == 1)
+        average_velocity = self.groove_all_parts[self.groove_all_parts!=0.0].mean()
         self.total_density = average_velocity * float(onset_count) / float(total_step_count)
         return self.total_density
+
+    def get_lowness(self):
+        # Extended by BH
+        # might need to x total density by 10 as it's not summed over one line
+        self.lowness = (float(self.get_low_density()) / float(self.get_total_density()))
+        return self.lowness
+
+    def get_midness(self):
+        # Extended by BH
+        # might need to x total density by 10 as it's not summed over one line
+        self.midness = (float(self.get_mid_density()) / float(self.get_total_density()))
+        return self.midness
 
     def get_hiness(self):
         # might need to x total density by 10 as it's not summed over one line
         self.hiness = (float(self.get_high_density()) / float(self.get_total_density()))
         return self.hiness
 
+    def get_lowsyncness(self):
+        low_density = self.get_low_density()
+
+        if low_density != 0.:
+            self.lowsyncness = float(self.get_low_syncopation()) / float(low_density)
+        else:
+            self.lowsyncness = 0
+        return self.lowsyncness
+
+    def get_midsyncness(self):
+        mid_density = self.get_mid_density()
+
+        if mid_density != 0.:
+            self.midsyncness = float(self.get_mid_syncopation()) / float(mid_density)
+        else:
+            self.midsyncness = 0
+        return self.midsyncness
+
     def get_hisyncness(self):
         high_density = self.get_high_density()
-        highParts = np.vstack([self.groove_10_parts[:,2], self.groove_10_parts[:,3], self.groove_10_parts[:,4],
-                             self.groove_10_parts[:,5],self.groove_10_parts[:,6]])
 
         if high_density != 0.:
             self.hisyncness = float(self.get_high_syncopation()) / float(high_density)
@@ -457,17 +707,18 @@ class RhythmFeatures():
         return self.hisyncness
 
     def get_complexity_1part(self, part):
-        # Get complexity of one part. Calculated following Sioros and Guedes (2011) as combination of denisty and syncopation
+        # Get complexity of one part. Calculated following Sioros and Guedes (2011) as
+        # combination of density and syncopation
         # Uses monophonic syncopation measure
         density = self.get_density(part)
         syncopation = self.get_syncopation_1part(part)
-        complexity = math.sqrt(pow(density, 2) + pow(syncopation,2))
+        complexity = math.sqrt(pow(density, 2) + pow(syncopation, 2))
         return complexity
 
     def get_total_complexity(self):
         density = self.get_total_density()
         syncopation = self.get_combined_syncopation()
-        self.total_complexity = math.sqrt(pow(density, 2) + pow(syncopation,2))
+        self.total_complexity = math.sqrt(pow(density, 2) + pow(syncopation, 2))
         return self.total_complexity
 
     def _get_autocorrelation_curve(self, part):
@@ -478,29 +729,29 @@ class RhythmFeatures():
         plt.figure()
         ax = autocorrelation_plot(part)
         autocorrelation = ax.lines[5].get_data()[1]
-        plt.plot(range(1, self.groove_10_parts.shape[0]+1),
+        plt.plot(range(1, self.groove_all_parts.shape[0]+1),
                  autocorrelation)  # plots from 1 to 32 inclusive - autocorrelation starts from 1 not 0 - 1-32
         plt.clf()
         plt.cla()
         plt.close()
-        old = np.correlate(part, part, mode='full')
         return np.nan_to_num(autocorrelation)
 
     def get_total_autocorrelation_curve(self):
         # Get autocorrelation curve for all parts summed.
 
         self.total_autocorrelation_curve = 0.0
-        for i in range(self.groove_10_parts.shape[1]):
-            self.total_autocorrelation_curve += self._get_autocorrelation_curve(self.groove_10_parts[:,i])
-        ax = autocorrelation_plot(self.total_autocorrelation_curve)
+        for i in range(self.groove_all_parts.shape[1]):
+            self.total_autocorrelation_curve += self._get_autocorrelation_curve(self.groove_all_parts[:, i])
 
-        #plt.figure()
-        #plt.plot(range(1,33),self.total_autocorrelation_curve)
+        # ax = autocorrelation_plot(self.total_autocorrelation_curve)
+        # plt.figure()
+        # plt.plot(range(1,33),self.total_autocorrelation_curve)
         return self.total_autocorrelation_curve
 
     def get_autocorrelation_skew(self):
+        self.total_autocorrelation_curve = self.get_total_autocorrelation_curve()
         # Get skewness of autocorrelation curve
-        if self.total_autocorrelation_curve:
+        if self.total_autocorrelation_curve is not None:
             pass
         else:
             self.total_autocorrelation_curve = self.get_total_autocorrelation_curve()
@@ -516,21 +767,21 @@ class RhythmFeatures():
         return self.autocorrelation_max_amplitude
 
     def get_autocorrelation_centroid(self):
-        # Like spectral centroid - weighted meean of frequencies in the signal, magnitude = weights.
+        # Like spectral centroid - weighted mean of frequencies in the signal, magnitude = weights.
         centroid_sum = 0
         total_weights = 0
         self.total_autocorrelation_curve = self.get_total_autocorrelation_curve()
 
         for i in range(self.total_autocorrelation_curve.shape[0]):
             # half wave rectify
-            addition = self.total_autocorrelation_curve[i] * i # sum all periodicities in the signal
+            addition = self.total_autocorrelation_curve[i] * i   # sum all periodicity's in the signal
             if addition >= 0:
                 total_weights += self.total_autocorrelation_curve[i]
                 centroid_sum += addition
         if total_weights != 0:
             self.autocorrelation_centroid = centroid_sum / total_weights
         else:
-            self.autocorrelation_centroid = self.groove_10_parts.shape[0] / 2
+            self.autocorrelation_centroid = self.groove_all_parts.shape[0] / 2
         return self.autocorrelation_centroid
 
     def get_autocorrelation_harmonicity(self):
@@ -542,7 +793,9 @@ class RhythmFeatures():
         for i in range(self.total_autocorrelation_curve.shape[0]):
             if self.total_autocorrelation_curve[i] < 0:
                 rectified_autocorrelation[i] = 0
-        peaks = np.asarray(find_peaks(rectified_autocorrelation))  # weird syntax due to 2.x/3.x compatibility issues here todo: rewrite for 3.x
+
+        # weird syntax due to 2.x/3.x compatibility issues here todo: rewrite for 3.x
+        peaks = np.asarray(find_peaks(rectified_autocorrelation))
         peaks = peaks[0] + 1  # peaks = lags
 
         inharmonic_sum = 0.0
@@ -563,11 +816,11 @@ class RhythmFeatures():
         # would have a symmetry of 1.0
 
         symmetry_count = 0.0
-        part1,part2 = np.split(part,2)
+        part1, part2 = np.split(part, 2)
         for i in range(part1.shape[0]):
             for j in range(part1.shape[1]):
-                if part1[i,j] != 0.0 and part2[i,j] != 0.0:
-                    symmetry_count += (1.0 - abs(part1[i,j] - part2[i,j]))
+                if part1[i, j] != 0.0 and part2[i, j] != 0.0:
+                    symmetry_count += (1.0 - abs(part1[i, j] - part2[i, j]))
         symmetry = symmetry_count*2.0 / np.count_nonzero(part)
         return symmetry
 
@@ -575,22 +828,26 @@ class RhythmFeatures():
         # Get total symmetry of pattern. Defined as the number of onsets that appear in the same positions in the first
         # and second halves of the pattern, divided by total number of onsets in the pattern.
 
-        self.total_symmetry = self._get_symmetry(self.groove_10_parts)
+        self.total_symmetry = self._get_symmetry(self.groove_all_parts)
         return self.total_symmetry
 
-class MicrotimingFeatures():
+
+class MicrotimingFeatures:
     def __init__(self, microtiming_matrix, tempo):
         self.microtiming_matrix = microtiming_matrix
 
         self.tempo = tempo
         self.average_timing_matrix = self.get_average_timing_deviation()
         self._get_swing_info()
-        self.microtiming_event_profile = np.hstack([self._getmicrotiming_event_profile_1bar(self.microtiming_matrix[0:16]),
-                                            self._getmicrotiming_event_profile_1bar(self.microtiming_matrix[16:])])
+        self.microtiming_event_profile = np.hstack(
+            [self._getmicrotiming_event_profile_1bar(self.microtiming_matrix[0:16]),
+             self._getmicrotiming_event_profile_1bar(self.microtiming_matrix[16:])])
         self.laidback_events = self._get_laidback_events()
         self.pushed_events = self._get_pushed_events()
         self.is_swung = self.check_if_swung()
 
+        self.laidbackness = None
+        self.timing_accuracy = None
 
     def calculate_all_features(self):
         # Get all microtiming features.
@@ -599,7 +856,7 @@ class MicrotimingFeatures():
         self.timing_accuracy = self.get_timing_accuracy()
 
     def get_all_features(self):
-        #todo: doesn't return tripletness
+        # todo: doesn't return triplet-ness
         return np.hstack([self.is_swung, self.swingness, self.laidbackness, self.timing_accuracy])
 
     def print_all_features(self):
@@ -620,7 +877,7 @@ class MicrotimingFeatures():
         return self.is_swung
 
     def get_swing_ratio(self):
-        #todo: implement
+        # todo: implement
         pass
 
     def get_swingness(self):
@@ -639,16 +896,15 @@ class MicrotimingFeatures():
         j = 0
         for i in swung_note_positions:
             if self.average_timing_matrix[i] < -25.0:
-                swing_count +=1
-            j+=1
+                swing_count += 1
+            j += 1
 
-        swing_count = np.clip(swing_count,0,len(swung_note_positions))
+        swing_count = np.clip(swing_count, 0, len(swung_note_positions))
 
-        if swing_count >0:
-            self.swingness = (1 + (swing_count / len(swung_note_positions)/10)) #todo: weight swing count
+        if swing_count > 0:
+            self.swingness = (1 + (swing_count / len(swung_note_positions)/10))  # todo: weight swing count
         else:
             self.swingness = 0.0
-
 
     def _getmicrotiming_event_profile_1bar(self, microtiming_matrix):
         # Get profile of microtiming events for use in pushness/laidbackness/ontopness features
@@ -665,50 +921,50 @@ class MicrotimingFeatures():
         threshold = 12.0
         kick_timing_1 = microtiming_matrix[0, 0]
         hihat_timing_1 = microtiming_matrix[0, 2]
-        snareTiming2 = microtiming_matrix[4, 1]
+        snare_timing2 = microtiming_matrix[4, 1]
         hihat_timing_2 = microtiming_matrix[4, 2]
         kick_timing_3 = microtiming_matrix[8, 0]
         hihat_timing_3 = microtiming_matrix[8, 2]
-        snareTiming4 = microtiming_matrix[12, 1]
+        snare_timing4 = microtiming_matrix[12, 1]
         hihat_timing_4 = microtiming_matrix[12, 2]
 
-        if kick_timing_1 > threshold :
+        if kick_timing_1 > threshold:
             timing_to_grid_profile[0] = 1
         if kick_timing_1 < -threshold:
             timing_to_grid_profile[1] = 1
-        if snareTiming2 > threshold:
+        if snare_timing2 > threshold:
             timing_to_grid_profile[2] = 1
-        if snareTiming2 < -threshold:
+        if snare_timing2 < -threshold:
             timing_to_grid_profile[3] = 1
 
         if kick_timing_3 > threshold:
             timing_to_grid_profile[4] = 1
         if kick_timing_3 < -threshold:
             timing_to_grid_profile[5] = 1
-        if snareTiming4 > threshold:
+        if snare_timing4 > threshold:
             timing_to_grid_profile[6] = 1
-        if snareTiming4 < -threshold:
+        if snare_timing4 < -threshold:
             timing_to_grid_profile[7] = 1
 
         if kick_timing_1 > hihat_timing_1 + threshold:
             timing_to_cymbal_profile[0] = 1
         if kick_timing_1 < hihat_timing_1 - threshold:
             timing_to_cymbal_profile[1] = 1
-        if snareTiming2 > hihat_timing_2 + threshold:
+        if snare_timing2 > hihat_timing_2 + threshold:
             timing_to_cymbal_profile[2] = 1
-        if snareTiming2 < hihat_timing_2 - threshold:
+        if snare_timing2 < hihat_timing_2 - threshold:
             timing_to_cymbal_profile[3] = 1
 
         if kick_timing_3 > hihat_timing_3 + threshold:
             timing_to_cymbal_profile[4] = 1
         if kick_timing_3 < hihat_timing_3 - threshold:
             timing_to_cymbal_profile[5] = 1
-        if snareTiming4 > hihat_timing_4 + threshold:
+        if snare_timing4 > hihat_timing_4 + threshold:
             timing_to_cymbal_profile[6] = 1
-        if snareTiming4 < hihat_timing_4 - threshold:
+        if snare_timing4 < hihat_timing_4 - threshold:
             timing_to_cymbal_profile[7] = 1
 
-        microtiming_event_profile_1bar = np.clip(timing_to_grid_profile+timing_to_cymbal_profile,0,1)
+        microtiming_event_profile_1bar = np.clip(timing_to_grid_profile+timing_to_cymbal_profile, 0, 1)
 
         return microtiming_event_profile_1bar
 
@@ -722,12 +978,13 @@ class MicrotimingFeatures():
         return self.pushed_events
 
     def _get_laidback_events(self):
-        # Calculate how 'laid-back' the loop is, based on the number of laid back events / number of possible laid back events
+        # Calculate how 'laid-back' the loop is,
+        # based on the number of laid back events / number of possible laid back events
 
         laidback_events = self.microtiming_event_profile[0::2]
         laidback_event_count = np.count_nonzero(laidback_events)
         total_laidback_positions = laidback_events.shape[0]
-        self.laidback_events =  laidback_event_count / float(total_laidback_positions)
+        self.laidback_events = laidback_event_count / float(total_laidback_positions)
         return self.laidback_events
 
     def get_timing_accuracy(self):
@@ -754,17 +1011,15 @@ class MicrotimingFeatures():
         for i in range(self.microtiming_matrix.shape[0]):
             row_sum = 0.0
             hit_count = 0.0
-            rowIsEmpty = np.all(np.isnan(self.microtiming_matrix[i,:]))
-            if rowIsEmpty:
+            row_is_empty = np.all(np.isnan(self.microtiming_matrix[i, :]))
+            if row_is_empty:
                 self.average_timing_matrix[i] = np.nan
             else:
                 for j in range(self.microtiming_matrix.shape[1]):
-                    if np.isnan(self.microtiming_matrix[i,j]):
+                    if np.isnan(self.microtiming_matrix[i, j]):
                         pass
                     else:
-                        row_sum += self.microtiming_matrix[i,j]
+                        row_sum += self.microtiming_matrix[i, j]
                         hit_count += 1.0
                 self.average_timing_matrix[i] = row_sum / hit_count
         return self.average_timing_matrix
-
-
