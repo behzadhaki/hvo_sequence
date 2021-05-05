@@ -48,7 +48,7 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.0.2"
+        self.__version = "0.1.0"
 
         self.__time_signatures = list()
         self.__tempos = list()
@@ -1625,11 +1625,13 @@ class HVO_Sequence(object):
     #   Extract Rhythmical and Microtiming Features for Evaluation
     #   -------------------------------------------------------------
 
-    def get_all_analysis_features(self):
+    def get_analysis_features(self, feature_list=[None]):
+        # If feature_list is [none], it get's all the features
+        # otherwise only features in feature_list will be calculated
         FeatureExtractor = CompleteFeatureExtractor(self, _5kitparts_map=Groove_Toolbox_5Part_keymap,
                                                     _3kitparts_map=Groove_Toolbox_3Part_keymap)
 
-        return FeatureExtractor.get_feature_dictionary()
+        return FeatureExtractor.get_feature_dictionary(feature_list=feature_list)
 
     #   -------------------------------------------------------------
     #   Similarity/Distance Calculators

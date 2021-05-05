@@ -33,6 +33,12 @@ if __name__ == "__main__":
     hvo_seq.hvo = np.concatenate((hits, vels, offs), axis=1)
     hvo_seq_b.hvo = np.concatenate((hits, vels_b, offs_b), axis=1)
 
+    # Get all features from hvo_seq
+    print(hvo_seq.get_analysis_features(feature_list=[None]))
+    print(hvo_seq.get_analysis_features(feature_list=["combined_syncopation", "low_syncopation", "lowsyncness", "swingness"]))
+
+    print(hvo_seq.total_number_of_steps)
+
     # Calculate distance metrics
     print(hvo_seq.calculate_all_distances_with(hvo_seq_b))
     print(hvo_seq.calculate_all_distances_with(hvo_seq))

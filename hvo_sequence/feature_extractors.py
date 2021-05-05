@@ -69,9 +69,11 @@ class CompleteFeatureExtractor:
         # Create an instance of the SpectralFeatures class
         self.spectral_features = SpectralFeatures(hvo_seq)
 
-    def get_feature_dictionary(self):
-        self.groove_toolbox.RhythmFeatures.calculate_all_features()
-        self.groove_toolbox.MicrotimingFeatures.calculate_all_features()
+    def get_feature_dictionary(self, feature_list=[None]):
+        # If feature_list is [None] calculate and compile all features
+        # otherwise only do so for the specified features in feature_list
+        self.groove_toolbox.RhythmFeatures.calculate_all_features(feature_list=feature_list)
+        self.groove_toolbox.MicrotimingFeatures.calculate_all_features(feature_list=feature_list)
 
         self.features_dictionary = {
             # GrooveToolbox.RhythmFeatures
@@ -114,7 +116,13 @@ class CompleteFeatureExtractor:
             # todo: add features here when the method is implemented
         }
 
-        return self.features_dictionary
+        compiled_features = {}
+        if feature_list != [None]:
+            for key in feature_list:
+                compiled_features[key]=self.features_dictionary[key]
+        else:
+            compiled_features = self.features_dictionary
+        return compiled_features
 
 #######################################################################
 #                  Audio/Spectral Based Features
@@ -209,7 +217,7 @@ def convert_groove_toolbox(grooveToolbox, src_map, tgt_map):
     return grooveToolbox
 
 class GrooveToolbox:
-    def __init__(self, hvo_seq, _5kitparts_map, _3kitparts_map, extract_features=True,
+    def __init__(self, hvo_seq, _5kitparts_map, _3kitparts_map, extract_features=False,
                  velocity_type="Regular", name="Groove"):
         # extractFeatures - if True (default), extract all features upon groove creation.
         # Set false if you don't need all features - instead retrieve as and when you need them
@@ -226,12 +234,13 @@ class GrooveToolbox:
         assert hvo_seq.hvo.shape[0] == 32 or hvo_seq.hvo.shape[0] == 16, \
             "Currently only 16 or 32 time steps are supported"
 
-        if hvo_seq.hvo.shape[0] == 16:
-            hvo_seq.hvo = np.concatenate([hvo_seq.hvo, hvo_seq.hvo])
-            print("hvo_seq.hvo.shape", hvo_seq.hvo.shape)
-
         self.groove_all_parts = hvo_seq.get("v")
         self.timing_matrix = hvo_seq.get("o", offsets_in_ms=True)
+
+        if hvo_seq.hvo.shape[0] == 16:
+            self.groove_all_parts = np.concatenate([self.groove_all_parts, self.groove_all_parts])
+            self.timing_matrix = np.concatenate([self.timing_matrix, self.timing_matrix])
+
         tempo = hvo_seq.tempos[0].qpm
 
         self.all_parts_map = hvo_seq.drum_mapping
@@ -343,31 +352,32 @@ class RhythmFeatures:
 
         # todo: Do I want to list names of class variables in here? So user can see them easily?
 
-    def calculate_all_features(self):
-        # Get all standard features in one go
-        self.combined_syncopation = self.get_combined_syncopation()
-        self.polyphonic_syncopation = self.get_polyphonic_syncopation()
-        self.low_syncopation = self.get_low_syncopation()
-        self.mid_syncopation = self.get_mid_syncopation()
-        self.high_syncopation = self.get_high_syncopation()
-        self.low_density = self.get_low_density()
-        self.mid_density = self.get_mid_density()
-        self.high_density = self.get_high_density()
-        self.total_density = self.get_total_density()
-        self.hiness = self.get_hiness()
-        self.midness = self.get_midness()
-        self.lowness = self.get_lowness()
-        self.hisyncness = self.get_hisyncness()
-        self.midsyncness = self.get_midsyncness()
-        self.lowsyncness = self.get_lowsyncness()
-        self.autocorrelation_skew = self.get_autocorrelation_skew()
-        self.autocorrelation_max_amplitude = self.get_autocorrelation_max_amplitude()
-        self.autocorrelation_centroid = self.get_autocorrelation_centroid()
-        self.autocorrelation_harmonicity = self.get_autocorrelation_harmonicity()
-        self.total_symmetry = self.get_total_symmetry()
-        self.total_average_intensity = self.get_total_average_intensity()
-        self.total_weak_to_strong_ratio = self.get_total_weak_to_strong_ratio()
-        self.total_complexity = self.get_total_complexity()
+    def calculate_all_features(self, feature_list=[None]):
+        # Gets requested features or all (if feature_list==[None])
+        #
+        self.combined_syncopation = self.get_combined_syncopation() if "combined_syncopation" in feature_list or feature_list==[None] else None
+        self.polyphonic_syncopation = self.get_polyphonic_syncopation() if "polyphonic_syncopation" in feature_list or feature_list == [None] else None
+        self.low_syncopation = self.get_low_syncopation() if "low_syncopation" in feature_list or feature_list == [None] else None
+        self.mid_syncopation = self.get_mid_syncopation() if "mid_syncopation" in feature_list or feature_list == [None] else None
+        self.high_syncopation = self.get_high_syncopation() if "high_syncopation" in feature_list or feature_list == [None] else None
+        self.low_density = self.get_low_density() if "low_density" in feature_list or feature_list == [None] else None
+        self.mid_density = self.get_mid_density() if "mid_density" in feature_list or feature_list == [None] else None
+        self.high_density = self.get_high_density() if "high_density" in feature_list or feature_list == [None] else None
+        self.total_density = self.get_total_density() if "total_density" in feature_list or feature_list == [None] else None
+        self.hiness = self.get_hiness() if "hiness" in feature_list or feature_list == [None] else None
+        self.midness = self.get_midness() if "midness" in feature_list or feature_list == [None] else None
+        self.lowness = self.get_lowness() if "lowness" in feature_list or feature_list == [None] else None
+        self.hisyncness = self.get_hisyncness() if "hisyncness" in feature_list or feature_list == [None] else None
+        self.midsyncness = self.get_midsyncness() if "midsyncness" in feature_list or feature_list == [None] else None
+        self.lowsyncness = self.get_lowsyncness() if "lowsyncness" in feature_list or feature_list == [None] else None
+        self.autocorrelation_skew = self.get_autocorrelation_skew() if "autocorrelation_skew" in feature_list or feature_list == [None] else None
+        self.autocorrelation_max_amplitude = self.get_autocorrelation_max_amplitude() if "autocorrelation_max_amplitude" in feature_list or feature_list == [None] else None
+        self.autocorrelation_centroid = self.get_autocorrelation_centroid() if "autocorrelation_centroid" in feature_list or feature_list == [None] else None
+        self.autocorrelation_harmonicity = self.get_autocorrelation_harmonicity() if "autocorrelation_harmonicity" in feature_list or feature_list == [None] else None
+        self.total_symmetry = self.get_total_symmetry() if "total_symmetry" in feature_list or feature_list == [None] else None
+        self.total_average_intensity = self.get_total_average_intensity() if "total_average_intensity" in feature_list or feature_list == [None] else None
+        self.total_weak_to_strong_ratio = self.get_total_weak_to_strong_ratio() if "total_weak_to_strong_ratio" in feature_list or feature_list == [None] else None
+        self.total_complexity = self.get_total_complexity() if "total_complexity" in feature_list or feature_list == [None] else None
 
     def get_all_features(self):
         return np.hstack([self.combined_syncopation,self.polyphonic_syncopation,self.low_syncopation, self.mid_syncopation,
@@ -849,11 +859,11 @@ class MicrotimingFeatures:
         self.laidbackness = None
         self.timing_accuracy = None
 
-    def calculate_all_features(self):
-        # Get all microtiming features.
-
-        self.laidbackness = self.laidback_events - self.pushed_events
-        self.timing_accuracy = self.get_timing_accuracy()
+    def calculate_all_features(self, feature_list=[None]):
+        # Gets requested microtiming features or all (if feature_list==[None])
+        #
+        self.laidbackness = (self.laidback_events - self.pushed_events) if "laidbackness" in feature_list or feature_list == [None] else None
+        self.timing_accuracy = self.get_timing_accuracy() if "timing_accuracy" in feature_list or feature_list == [None] else None
 
     def get_all_features(self):
         # todo: doesn't return triplet-ness
