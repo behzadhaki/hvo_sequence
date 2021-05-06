@@ -1498,14 +1498,16 @@ class HVO_Sequence(object):
 
     def get(self, hvo_str, offsets_in_ms=False):
         """
-        Flexible method to get hits, velocities and offsets in the desired order. The velocities
-        and offsets are synced to the hits, so whenever a hit is 0, velocities and offsets will be 0 as well.
+        Flexible method to get hits, velocities and offsets in the desired order, or zero arrays with the same
+        dimensions as one of those vectors. The velocities and offsets are synced to the hits, so whenever a hit is 0,
+        velocities and offsets will be 0 as well.
 
         Parameters
         ----------
         hvo_str: str
-            String formed with the characters 'h', 'v' and 'o' in any order. It's not necessary
-            to use all of the characters and they can be repeated. E.g. 'ov' or 'hvoh'
+            String formed with the characters 'h', 'v', 'o' and '0' in any order. It's not necessary to use all of the
+            characters and they can be repeated. E.g. 'ov', will return the offsets and velocities, 'h0h' will return
+            the hits, a 0-vector and the hits again, again and '000' will return a hvo-sized 0 matrix.
 
         offsets_in_ms: bool
             If true, the queried offsets will be provided in ms deviations from grid, otherwise, will be
@@ -1517,8 +1519,9 @@ class HVO_Sequence(object):
         hvo_arr = []
         tmp_hvo = self.hvo  # to avoid calling several times
         for c in hvo_str:
-            assert (c == 'h' or c == 'v' or c == 'o'), 'hvo_str not valid'
-            concat_arr = tmp_hvo[:, :self.number_of_voices] if c == 'h'\
+            assert (c == 'h' or c == 'v' or c == 'o' or c == '0'), 'hvo_str not valid'
+            concat_arr = np.zeros_like(tmp_hvo[:, :self.number_of_voices]) if c == '0'\
+                else tmp_hvo[:, :self.number_of_voices] if c == 'h'\
                 else tmp_hvo[:, self.number_of_voices:self.number_of_voices*2] if c == 'v'\
                 else tmp_hvo[:, self.number_of_voices*2:] if offsets_in_ms is False \
                 else self.get_offsets_in_ms()
