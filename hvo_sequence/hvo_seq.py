@@ -1771,3 +1771,26 @@ class HVO_Sequence(object):
                                  _3kitparts_map=Groove_Toolbox_3Part_keymap, extract_features=False)
 
         return structural_similarity_distance(groove_a, groove_b)
+
+
+    #   -------------------------------------------------------------
+    #   Method to try to estimate whether this hvo sequence comes
+    #   from a performance MIDI file
+    #   -------------------------------------------------------------
+
+    def is_performance(self, velocity_threshold=0.3,
+                       offset_threshold=0.1):  # if at least x percentage is unique, is performance (revise)
+        is_perf = False
+
+        nonzero_nonone_vels = self.velocities[(self.velocities != 0) & (self.velocities != 1)]
+        unique_velocities = np.unique(nonzero_nonone_vels)
+        unique_vel_perc = 0 if len(nonzero_nonone_vels) == 0 else len(unique_velocities) / len(nonzero_nonone_vels)
+
+        nonzero_offsets = self.offsets[np.nonzero(self.offsets)[0]]
+        unique_offsets = np.unique(nonzero_offsets)
+        unique_off_perc = 0 if len(nonzero_offsets) == 0 else len(unique_offsets) / len(nonzero_offsets)
+
+        if unique_vel_perc >= velocity_threshold and unique_off_perc >= offset_threshold:
+            is_perf = True
+
+        return is_perf
