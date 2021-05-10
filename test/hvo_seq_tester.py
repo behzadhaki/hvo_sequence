@@ -1,5 +1,5 @@
 from hvo_sequence.hvo_seq import HVO_Sequence
-from hvo_sequence.drum_mappings import ROLAND_REDUCED_MAPPING
+from hvo_sequence.drum_mappings import ROLAND_REDUCED_MAPPING, Groove_Toolbox_5Part_keymap, GM1_FULL_MAP
 
 import numpy as np
 
@@ -16,17 +16,38 @@ if __name__ == "__main__":
     # Add two tempos
     hvo_seq.add_tempo(0, 50)
 
-    hvo_seq.add_tempo(12, 20)  # Tempo Change at the beginning of second bar
+    #hvo_seq.add_tempo(12, 20)  # Tempo Change at the beginning of second bar
 
     # Create a random hvo
-    hits = np.random.randint(0, 2, (36, 9))
-    vels = hits * np.random.rand(36, 9)
-    offs = hits * (np.random.rand(36, 9) - 0.5)
+    hits = np.random.randint(0, 2, (16, 9))
+    vels = hits * np.random.rand(16, 9)
+    # vels = hit * np.zeros((16, 9))
+    offs = hits * (np.random.rand(16, 9) -0.5)
+    # offs = hits * np.zeros_like(hits)
 
     # Add hvo score to hvo_seq instance
-    hvo_seq.hvo = np.concatenate((hits, vels, offs), axis=1)
+    hvo_bar = np.concatenate((hits, vels, offs), axis=1)
+    hvo_seq.hvo = np.concatenate((hvo_bar, hvo_bar), axis=0)
 
-    print(hvo_seq.get_bar_beat_hvo(hvo_str="hvo"))
+    # Micro-timing features
+    """print(hvo_seq.laidbackness(
+        kick_key_in_drum_mapping="KICK",
+        snare_key_in_drum_mapping="SNARE",
+        hihat_key_in_drum_mapping="HH_CLOSED"))"""
+
+    print(hvo_seq.get_timing_accuracy())
+
+    acorr = hvo_seq.get_total_autocorrelation_curve()
+    print(hvo_seq.get_velocity_autocorrelation_features())
+    print(hvo_seq.get_velocity_score_symmetry())
+    print(hvo_seq.get_velocity_intensity_mean_stdev())
+
+    hvo_seq.to_html_plot(show_figure=True, filename="temp.html")
+
+    hvo_seq_5part = hvo_seq.convert_to_alternate_mapping(tgt_drum_mapping=Groove_Toolbox_5Part_keymap)
+    hvo_seq_5part.to_html_plot(show_figure=True, filename="temp.html")
+
+    #print(hvo_seq.get_bar_beat_hvo(hvo_str="hvo"))
     # Returns flattened hvo (or ho) vector
     #flat_hvo = hvo_seq.flatten_voices()
     #flat_hvo_voice_2 = hvo_seq.flatten_voices(voice_idx=2)
@@ -53,15 +74,15 @@ if __name__ == "__main__":
     o = hvo_seq.offsets
 
     # Reset voices
-    hvo_seq.reset_voices([2,3])
+    """    hvo_seq.reset_voices([2, 3])
     hvo_seq.to_html_plot(show_figure=True)
 
-    hvo_seq.reset_voices([0],reset_hits=True,reset_velocity=False)
-    hvo_seq.to_html_plot(show_figure=True)
+    hvo_seq.reset_voices([0], reset_hits=True,reset_velocity=False)
+    hvo_seq.to_html_plot(show_figure=True)"""
 
 
     #STFT
-    hvo_seq.stft(plot=True) 
+    hvo_seq.stft(plot=True)
     #mel_spectrogram
     hvo_seq.mel_spectrogram(plot=True)
 
