@@ -2522,7 +2522,7 @@ class HVO_Sequence(object):
         :return:
             distance:           abs value of distance between sequences
         """
-
+        
         if self.is_ready_for_use() is False or hvo_seq_b.is_ready_for_use() is False:
             return None
 
@@ -2556,3 +2556,32 @@ class HVO_Sequence(object):
 
         return reduced_groove
 
+    def is_performance(self, velocity_threshold=0.3, offset_threshold=0.1):
+        """
+        By looking at the unique velocities and offsets, approximate whether the hvo_sequence comes from a
+        performance MIDI file or not
+
+        :param velocity_threshold:      threshold from 0 to 1 indicating what percentage of the velocities different
+                                        from 0 and 1 must be unique to consider the sequence to be performance.
+
+        :param offset_threshold:        threshold from 0 to 1 indicating what percentage of the offsets different
+                                        from 0 must be unique to consider the sequence to be performance.
+        :return:
+            is_performance:             boolean value returning whether the sequence is or not from a performance
+        """
+
+        assert (0 <= velocity_threshold <= 1 and 0 <= offset_threshold <= 1), "Invalid threshold"
+        is_perf = False
+
+        nonzero_nonone_vels = self.velocities[(self.velocities != 0) & (self.velocities != 1)]
+        unique_velocities = np.unique(nonzero_nonone_vels)
+        unique_vel_perc = 0 if len(nonzero_nonone_vels) == 0 else len(unique_velocities) / len(nonzero_nonone_vels)
+
+        nonzero_offsets = self.offsets[np.nonzero(self.offsets)[0]]
+        unique_offsets = np.unique(nonzero_offsets)
+        unique_off_perc = 0 if len(nonzero_offsets) == 0 else len(unique_offsets) / len(nonzero_offsets)
+
+        if unique_vel_perc >= velocity_threshold and unique_off_perc >= offset_threshold:
+            is_perf = True
+
+        return is_perf
