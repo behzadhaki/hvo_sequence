@@ -2556,13 +2556,21 @@ class HVO_Sequence(object):
 
         return reduced_groove
 
-          #   -------------------------------------------------------------
-    #   Method to try to estimate whether this hvo sequence comes
-    #   from a performance MIDI file
-    #   -------------------------------------------------------------
+    def is_performance(self, velocity_threshold=0.3, offset_threshold=0.1):
+        """
+        By looking at the unique velocities and offsets, approximate whether the hvo_sequence comes from a
+        performance MIDI file or not
 
-    def is_performance(self, velocity_threshold=0.3,
-                       offset_threshold=0.1):  # if at least x percentage is unique, is performance (revise)
+        :param velocity_threshold:      threshold from 0 to 1 indicating what percentage of the velocities different
+                                        from 0 and 1 must be unique to consider the sequence to be performance.
+
+        :param offset_threshold:        threshold from 0 to 1 indicating what percentage of the offsets different
+                                        from 0 must be unique to consider the sequence to be performance.
+        :return:
+            is_performance:             boolean value returning whether the sequence is or not from a performance
+        """
+
+        assert (0 <= velocity_threshold <= 1 and 0 <= offset_threshold <= 1), "Invalid threshold"
         is_perf = False
 
         nonzero_nonone_vels = self.velocities[(self.velocities != 0) & (self.velocities != 1)]
