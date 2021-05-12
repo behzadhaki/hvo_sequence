@@ -210,8 +210,10 @@ class HVO_Sequence(object):
         n_inst = len(self.drum_mapping)  # number of instruments in the mapping
         n_timesteps = self.hvo.shape[0]  # number of frames
 
-        hvo_reset = self.hvo
-        hvo_out_voices = np.zeros([n_timesteps,3*n_inst])
+        hvo_reset = deepcopy(self)
+        hvo_out_voices = deepcopy(self)
+        hvo_out_voices.__hvo = np.zeros([n_timesteps,3*n_inst])
+        
         # iterate voices in voice_idx list
         for i, _voice_idx in enumerate(voice_idx):
 
@@ -245,16 +247,16 @@ class HVO_Sequence(object):
             # reset voice
             if _reset_hits:
                 #self.__hvo[:, h_idx] = np.zeros(n_timesteps)  # don't modify internal hvo
-                hvo_reset[:, h_idx] = np.zeros(n_timesteps)
-                hvo_out_voices[:,h_idx] = self.hvo[:,h_idx]
+                hvo_reset.__hvo[:, h_idx] = np.zeros(n_timesteps)
+                hvo_out_voices.__hvo[:,h_idx] = self.hvo[:,h_idx]
             if _reset_velocity:
                 #self.__hvo[:, v_idx] = np.zeros(n_timesteps)   # don't modify internal hvo
-                hvo_reset[:, v_idx] = np.zeros(n_timesteps)
-                hvo_out_voices[:,v_idx] = self.hvo[:,v_idx]
+                hvo_reset.__hvo[:, v_idx] = np.zeros(n_timesteps)
+                hvo_out_voices.__hvo[:,v_idx] = self.hvo[:,v_idx]
             if _reset_offsets:
                 #self.__hvo[:, o_idx] = np.zeros(n_timesteps)   # don't modify internal hvo
-                hvo_reset[:, o_idx] = np.zeros(n_timesteps)
-                hvo_out_voices[:,o_idx] = self.hvo[:,o_idx]
+                hvo_reset.__hvo[:, o_idx] = np.zeros(n_timesteps)
+                hvo_out_voices.__hvo[:,o_idx] = self.hvo[:,o_idx]
 
         return hvo_reset, hvo_out_voices
 
