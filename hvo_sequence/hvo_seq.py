@@ -11,6 +11,7 @@ import warnings
 from scipy import stats
 from scipy.signal import find_peaks
 import math
+from copy import deepcopy
 
 from hvo_sequence.utils import is_power_of_two, find_pitch_and_tag, cosine_similarity, cosine_distance
 from hvo_sequence.utils import _weight_groove, _reduce_part, fuzzy_Hamming_distance
@@ -207,8 +208,10 @@ class HVO_Sequence(object):
             return None
 
         n_inst = len(self.drum_mapping)  # number of instruments in the mapping
-        n_frames = self.hvo.shape[0]  # number of frames
+        n_timesteps = self.hvo.shape[0]  # number of frames
 
+        hvo_reset = self.hvo
+        hvo_out_voices = np.zeros([n_timesteps,3*n_inst])
         # iterate voices in voice_idx list
         for i, _voice_idx in enumerate(voice_idx):
 
@@ -241,11 +244,19 @@ class HVO_Sequence(object):
 
             # reset voice
             if _reset_hits:
-                self.__hvo[:, h_idx] = np.zeros(n_frames)
+                #self.__hvo[:, h_idx] = np.zeros(n_timesteps)  # don't modify internal hvo
+                hvo_reset[:, h_idx] = np.zeros(n_timesteps)
+                hvo_out_voices[:,h_idx] = self.hvo[:,h_idx]
             if _reset_velocity:
-                self.__hvo[:, v_idx] = np.zeros(n_frames)
+                #self.__hvo[:, v_idx] = np.zeros(n_timesteps)   # don't modify internal hvo
+                hvo_reset[:, v_idx] = np.zeros(n_timesteps)
+                hvo_out_voices[:,v_idx] = self.hvo[:,v_idx]
             if _reset_offsets:
-                self.__hvo[:, o_idx] = np.zeros(n_frames)
+                #self.__hvo[:, o_idx] = np.zeros(n_timesteps)   # don't modify internal hvo
+                hvo_reset[:, o_idx] = np.zeros(n_timesteps)
+                hvo_out_voices[:,o_idx] = self.hvo[:,o_idx]
+
+        return hvo_reset, hvo_out_voices
 
     def flatten_voices(self, get_velocities=True, reduce_dim=False, voice_idx=0):
 

@@ -40,7 +40,7 @@ if __name__ == "__main__":
     acorr = hvo_seq.get_total_autocorrelation_curve()
     print(hvo_seq.get_velocity_autocorrelation_features())
     print(hvo_seq.get_velocity_score_symmetry())
-    print(hvo_seq.get_velocity_intensity_mean_stdev())
+    #print(hvo_seq.get_velocity_intensity_mean_stdev())
 
     hvo_seq.to_html_plot(show_figure=True, filename="temp.html")
 
@@ -74,16 +74,13 @@ if __name__ == "__main__":
     o = hvo_seq.offsets
 
     # Reset voices
-    """    hvo_seq.reset_voices([2, 3])
-    hvo_seq.to_html_plot(show_figure=True)
-
+    hvo_reset, hvo_out_voices = hvo_seq.reset_voices([0,1])
     hvo_seq.reset_voices([0], reset_hits=True,reset_velocity=False)
-    hvo_seq.to_html_plot(show_figure=True)"""
 
 
     #STFT
-    hvo_seq.stft(plot=True)
+    #hvo_seq.stft(plot=True)
     #mel_spectrogram
-    hvo_seq.mel_spectrogram(plot=True)
+    #hvo_seq.mel_spectrogram(plot=True)
 
 
