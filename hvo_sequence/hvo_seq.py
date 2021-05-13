@@ -11,13 +11,14 @@ import warnings
 from scipy import stats
 from scipy.signal import find_peaks
 import math
+import copy
 
 from hvo_sequence.utils import is_power_of_two, find_pitch_and_tag, cosine_similarity, cosine_distance
 from hvo_sequence.utils import _weight_groove, _reduce_part, fuzzy_Hamming_distance
 from hvo_sequence.utils import _get_kick_and_snare_syncopations, get_monophonic_syncopation
 from hvo_sequence.utils import get_weak_to_strong_ratio, _getmicrotiming_event_profile_1bar
 
-from hvo_sequence.custom_dtypes import Tempo, Time_Signature
+from hvo_sequence.custom_dtypes import Tempo, Time_Signature, Metadata
 from hvo_sequence.drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
 
 from hvo_sequence.metrical_profiles import WITEK_SYNCOPATION_METRICAL_PROFILE_4_4_16th_NOTE
@@ -56,7 +57,9 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.2.1"
+        self.__version = "0.3.0"
+
+        self.__metadata = Metadata()
 
         self.__time_signatures = list()
         self.__tempos = list()
@@ -70,6 +73,19 @@ class HVO_Sequence(object):
             self.drum_mapping = drum_mapping
 
     #   ----------------------------------------------------------------------
+    #          Overridden Operators for ==, !=, +
+    #   ----------------------------------------------------------------------
+    # todo implement appending using +
+    def __add__(self, other):
+        #    append one sequence to the other
+        pass
+
+    # todo implement indexing using []
+    def __sqb__(self, indices):
+        # returns a tempo and time_signature consistent segment of sequence
+        pass
+
+    #   ----------------------------------------------------------------------
     #   Essential properties (which require getters and setters)
     #   Property getters and setter wrappers for ESSENTIAL class variables
     #   ----------------------------------------------------------------------
@@ -77,6 +93,18 @@ class HVO_Sequence(object):
     @property
     def __version__(self):
         return self.__version
+
+    @property
+    def metadata(self):
+        return self.__metadata
+
+    @metadata.setter
+    def metadata(self, metadata_instance):
+        assert isinstance(
+            metadata_instance, Metadata), "Expected a Metadata Instance but received {}. " \
+                                          "Use a Metadata instance available in hvo_sequence.custom_dtypes".format(
+            type(metadata_instance))
+        self.__metadata = metadata_instance
 
     @property
     def time_signatures(self):
@@ -160,6 +188,10 @@ class HVO_Sequence(object):
     #   --------------------------------------------------------------
     #   Utilities to modify hvo sequence
     #   --------------------------------------------------------------
+    @property
+    def remove_hvo(self):
+        # removes hvo content and resets to None
+        self.__hvo = None
 
     @property
     def force_vo_reset(self):
@@ -1337,6 +1369,23 @@ class HVO_Sequence(object):
     #   Utilities to import/export/Convert different score formats such as
     #       1. NoteSequence, 2. HVO array, 3. Midi
     #   --------------------------------------------------------------
+    def copy(self):
+        new = HVO_Sequence()
+        new.__dict__ = copy.copy(self.__dict__)
+        return new
+
+    def copy_empty(self):
+        new = HVO_Sequence()
+        new.__dict__ = copy.copy(self.__dict__)
+        new.__hvo = None
+        return new
+
+    def copy_zero(self):
+        new = HVO_Sequence()
+        new.__dict__ = copy.copy(self.__dict__)
+        if new.hvo is not None:
+            new.hvo = np.zeros_like(new.__hvo)
+        return new
 
     def to_note_sequence(self, midi_track_n=9):
         """
@@ -2540,3 +2589,26 @@ class HVO_Sequence(object):
             is_perf = True
 
         return is_perf
+
+
+def empty_like(other_hvo_sequence):
+    """
+    Creates a copy of other_hvo_sequence while ignoring the hvo content
+    :param other_hvo_sequence:
+    :return:
+    """
+    new_hvo_seq = HVO_Sequence()
+    other_dict = copy.copy(other_hvo_sequence.__dict__)
+    new_hvo_seq.__dict__.update(other_dict)
+    new_hvo_seq.remove_hvo
+    return new_hvo_seq
+
+
+def zero_like(other_hvo_sequence):
+    new_hvo_seq = HVO_Sequence()
+    other_dict = copy.copy(other_hvo_sequence.__dict__)
+    new_hvo_seq.__dict__.update(other_dict)
+    if new_hvo_seq.hvo is not None:
+        new_hvo_seq.hvo = np.zeros_like(new_hvo_seq.hvo)
+
+    return new_hvo_seq
