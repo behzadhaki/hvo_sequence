@@ -213,7 +213,7 @@ class HVO_Sequence(object):
         hvo_reset = deepcopy(self)
         hvo_out_voices = deepcopy(self)
         hvo_out_voices.__hvo = np.zeros([n_timesteps,3*n_inst])
-        
+
         # iterate voices in voice_idx list
         for i, _voice_idx in enumerate(voice_idx):
 
