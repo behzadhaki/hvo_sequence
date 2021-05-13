@@ -230,19 +230,23 @@ class HVO_Sequence(object):
             warnings.warn("Reset_offsets must be boolean or list of booleans of length equal to voice_idx")
             return None
 
-        n_inst = len(self.drum_mapping)  # number of instruments in the mapping
-        n_frames = self.hvo.shape[0]  # number of frames
+        n_voices = len(self.drum_mapping)  # number of instruments in the mapping
+        n_timesteps = self.hvo.shape[0]  # number of frames
+
+        # copy original hvo_seq into hvo_reset and hvo_reset_complementary
+        hvo_reset = self.copy()  # copies the full hvo, each voice will be later set to 0
+        hvo_reset_comp = self.copy_zero() # copies a zero hvo, each voice will be later set to its values in hvo_seq
 
         # iterate voices in voice_idx list
         for i, _voice_idx in enumerate(voice_idx):
 
-            if _voice_idx not in range(n_inst):
+            if _voice_idx not in range(n_voices):
                 warnings.warn("Instrument index not in drum mapping")
                 return None
 
             h_idx = _voice_idx  # hits
-            v_idx = _voice_idx + n_inst  # velocity
-            o_idx = _voice_idx + 2 * n_inst  # offset
+            v_idx = _voice_idx + n_voices  # velocity
+            o_idx = _voice_idx + 2 * n_voices  # offset
 
             _reset_hits = reset_hits
             _reset_velocity = reset_velocity
@@ -265,11 +269,16 @@ class HVO_Sequence(object):
 
             # reset voice
             if _reset_hits:
-                self.__hvo[:, h_idx] = np.zeros(n_frames)
+                hvo_reset.__hvo[:, h_idx] = np.zeros(n_timesteps)
+                hvo_reset_comp.__hvo[:,h_idx] = self.hvo[:,h_idx]
             if _reset_velocity:
-                self.__hvo[:, v_idx] = np.zeros(n_frames)
+                hvo_reset.__hvo[:, v_idx] = np.zeros(n_timesteps)
+                hvo_reset_comp.__hvo[:,v_idx] = self.hvo[:,v_idx]
             if _reset_offsets:
-                self.__hvo[:, o_idx] = np.zeros(n_frames)
+                hvo_reset.__hvo[:, o_idx] = np.zeros(n_timesteps)
+                hvo_reset_comp.__hvo[:,o_idx] = self.hvo[:,o_idx]
+
+        return hvo_reset, hvo_reset_comp
 
     def flatten_voices(self, get_velocities=True, reduce_dim=False, voice_idx=0):
 
