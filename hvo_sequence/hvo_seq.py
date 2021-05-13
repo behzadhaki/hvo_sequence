@@ -241,8 +241,9 @@ class HVO_Sequence(object):
         n_voices = len(self.drum_mapping)  # number of instruments in the mapping
         n_timesteps = self.hvo.shape[0]  # number of frames
 
-        hvo_reset = self.copy()
-        hvo_reset_comp = self.copy_zero()
+        # copy original hvo_seq into hvo_reset and hvo_reset_complementary
+        hvo_reset = self.copy()  # copies the full hvo, each voice will be later set to 0
+        hvo_reset_comp = self.copy_zero() # copies a zero hvo, each voice will be later set to its values in hvo_seq
 
         # iterate voices in voice_idx list
         for i, _voice_idx in enumerate(voice_idx):
@@ -276,8 +277,19 @@ class HVO_Sequence(object):
 
             # reset voice
             if _reset_hits:
-                hvo_reset.__hvo[:, h_idx] = np.zeros(n_timesteps)   
+                print("before reset")
+                print("self",self.hvo[:10, h_idx])
+                print("hvo_reset",hvo_reset.hvo[:10, h_idx])
+                print("hvo_reset_comp",hvo_reset_comp.hvo[:10, h_idx])
+
+                hvo_reset.__hvo[:, h_idx] = np.zeros(n_timesteps)
                 hvo_reset_comp.__hvo[:,h_idx] = self.hvo[:,h_idx]
+
+                print("\nafter reset")
+                print("self",self.hvo[:10, h_idx])
+                print("hvo_reset",hvo_reset.hvo[:10, h_idx])
+                print("hvo_reset_comp",hvo_reset_comp.hvo[:10, h_idx])
+
             if _reset_velocity:
                 hvo_reset.__hvo[:, v_idx] = np.zeros(n_timesteps)
                 hvo_reset_comp.__hvo[:,v_idx] = self.hvo[:,v_idx]
