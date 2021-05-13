@@ -1,4 +1,4 @@
-from hvo_sequence.hvo_seq import HVO_Sequence
+from hvo_sequence.hvo_seq import HVO_Sequence, empty_like
 from hvo_sequence.drum_mappings import ROLAND_REDUCED_MAPPING, Groove_Toolbox_5Part_keymap, GM1_FULL_MAP
 
 import numpy as np

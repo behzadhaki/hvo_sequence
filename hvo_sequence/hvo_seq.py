@@ -12,13 +12,14 @@ from scipy import stats
 from scipy.signal import find_peaks
 import math
 from copy import deepcopy
+import copy
 
 from hvo_sequence.utils import is_power_of_two, find_pitch_and_tag, cosine_similarity, cosine_distance
 from hvo_sequence.utils import _weight_groove, _reduce_part, fuzzy_Hamming_distance
 from hvo_sequence.utils import _get_kick_and_snare_syncopations, get_monophonic_syncopation
 from hvo_sequence.utils import get_weak_to_strong_ratio, _getmicrotiming_event_profile_1bar
 
-from hvo_sequence.custom_dtypes import Tempo, Time_Signature
+from hvo_sequence.custom_dtypes import Tempo, Time_Signature, Metadata
 from hvo_sequence.drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
 
 from hvo_sequence.metrical_profiles import WITEK_SYNCOPATION_METRICAL_PROFILE_4_4_16th_NOTE
@@ -57,7 +58,9 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.2.0"
+        self.__version = "0.3.0"
+
+        self.__metadata = Metadata()
 
         self.__time_signatures = list()
         self.__tempos = list()
@@ -71,6 +74,19 @@ class HVO_Sequence(object):
             self.drum_mapping = drum_mapping
 
     #   ----------------------------------------------------------------------
+    #          Overridden Operators for ==, !=, +
+    #   ----------------------------------------------------------------------
+    # todo implement appending using +
+    def __add__(self, other):
+        #    append one sequence to the other
+        pass
+
+    # todo implement indexing using []
+    def __sqb__(self, indices):
+        # returns a tempo and time_signature consistent segment of sequence
+        pass
+
+    #   ----------------------------------------------------------------------
     #   Essential properties (which require getters and setters)
     #   Property getters and setter wrappers for ESSENTIAL class variables
     #   ----------------------------------------------------------------------
@@ -78,6 +94,18 @@ class HVO_Sequence(object):
     @property
     def __version__(self):
         return self.__version
+
+    @property
+    def metadata(self):
+        return self.__metadata
+
+    @metadata.setter
+    def metadata(self, metadata_instance):
+        assert isinstance(
+            metadata_instance, Metadata), "Expected a Metadata Instance but received {}. " \
+                                          "Use a Metadata instance available in hvo_sequence.custom_dtypes".format(
+            type(metadata_instance))
+        self.__metadata = metadata_instance
 
     @property
     def time_signatures(self):
@@ -161,6 +189,10 @@ class HVO_Sequence(object):
     #   --------------------------------------------------------------
     #   Utilities to modify hvo sequence
     #   --------------------------------------------------------------
+    @property
+    def remove_hvo(self):
+        # removes hvo content and resets to None
+        self.__hvo = None
 
     @property
     def force_vo_reset(self):
@@ -355,10 +387,10 @@ class HVO_Sequence(object):
         valid = True
         if len(self.__hvo[:, :self.number_of_voices]) != len(hit_array):
             valid = False
-            print("hit array length mismatch")
+            warnings.warn("hit array length mismatch")
         if not np.all(np.logical_or(np.asarray(hit_array) == 0, np.asarray(hit_array) == 1)):
             valid = False
-            print("invalid hit values in array, they must be 0 or 1")
+            warnings.warn("invalid hit values in array, they must be 0 or 1")
         return valid
 
     @hits.setter
@@ -379,7 +411,7 @@ class HVO_Sequence(object):
         calculable = all([self.is_hvo_score_available(),
                           self.is_drum_mapping_available()])
         if not calculable:
-            print("can't get velocities as there is no hvo score previously provided")
+            warnings.warn("can't get velocities as there is no hvo score previously provided")
         else:
             # Note that the value returned is the internal one - even if a hit is 0 at an index,
             # velocity at that same index might not be 0
@@ -420,7 +452,7 @@ class HVO_Sequence(object):
         calculable = all([self.is_hvo_score_available(),
                           self.is_drum_mapping_available()])
         if not calculable:
-            print("can't get offsets/utimings as there is no hvo score previously provided")
+            warnings.warn("can't get offsets/utimings as there is no hvo score previously provided")
             return None
         else:
             # Note that the value returned is the internal one - even if a hit is 0 at an index,
@@ -447,7 +479,7 @@ class HVO_Sequence(object):
         calculable = all([self.is_hvo_score_available(),
                           self.is_drum_mapping_available()])
         if not calculable:
-            print("can't set offsets as there is no hvo score previously provided")
+            warnings.warn("can't set offsets as there is no hvo score previously provided")
         else:
             if self.__is_offset_array_valid(offset_array):
                 self.hvo[:, 2 * self.number_of_voices:] = offset_array
@@ -476,7 +508,8 @@ class HVO_Sequence(object):
         if not all(time_signatures_ready_to_use):
             for ix, ready_status in enumerate(time_signatures_ready_to_use):
                 if ready_status is not True:
-                    print("There are missing fields in Time_Signature {}: {}".format(ix, self.time_signatures[ix]))
+                    warnings.warn(
+                        "There are missing fields in Time_Signature {}: {}".format(ix, self.time_signatures[ix]))
             return False
         else:
             return True
@@ -494,7 +527,8 @@ class HVO_Sequence(object):
         if not all(tempos_ready_to_use):
             for ix, ready_status in enumerate(tempos_ready_to_use):
                 if ready_status is not True:
-                    print("There are missing fields in Tempo {}: {}".format(ix, self.tempos[ix]))
+                    warnings.warn(
+                        "There are missing fields in Tempo {}: {}".format(ix, self.tempos[ix]))
             return False
         else:
             return True
@@ -510,7 +544,8 @@ class HVO_Sequence(object):
     def is_hvo_score_available(self):
         # Checks whether hvo score array is already specified
         if self.is_drum_mapping_available is None or self.hvo is None:
-            print("Either HVO score or drum_mapping are missing")
+            warnings.warn(
+                "Either HVO score or drum_mapping are missing")
             return False
         else:
             return True
@@ -668,7 +703,7 @@ class HVO_Sequence(object):
 
         return hvo_arr
 
-    def get_offsets_in_ms(self, use_NaN_for_non_hits=False):
+    def get_offsets_in_ms(self):
         """
         Gets the offset portion of hvo and converts the values to ms using the associated grid
 
@@ -688,42 +723,23 @@ class HVO_Sequence(object):
         pos_instrument_tensors = np.transpose(np.nonzero(self.__hvo[:, :n_voices]))
 
         # create an empty offsets array
-        offsets = np.zeros_like(self.__hvo[:, :n_voices])
+        offsets_ratio = self.__hvo[:, 2*n_voices:]
+        neg_offsets = np.where(offsets_ratio < 0, offsets_ratio, 0)
+        pos_offsets = np.where(offsets_ratio > 0, offsets_ratio, 0)
 
-        # Initialize the offsets to np.nan if use_NaN_for_non_hits is True
-        if use_NaN_for_non_hits is not False:
-            offsets[:] = np.nan
+        # Find negative and positive scaling factors for offset ratios
+        grid = self.grid_lines
+        inter_grid_distances = (grid[1:] - grid[:-1]) * 1000    # 1000 for sec to ms
+        neg_bar_durations = np.zeros_like(grid)
+        pos_bar_durations = np.zeros_like(grid)
+        neg_bar_durations[1:] = inter_grid_distances
+        pos_bar_durations[:-1] = inter_grid_distances
 
-        # Add notes to the NoteSequence object
-        for drum_event in pos_instrument_tensors:  # drum_event -> [grid_position, drum_voice_class]
-            grid_pos = drum_event[0]  # grid position
-            drum_voice_class = drum_event[1]  # drum_voice_class in range(n_voices)
+        # Scale offsets by grid durations
+        neg_offsets = neg_offsets*neg_bar_durations[:neg_offsets.shape[0], None]
+        pos_offsets = pos_offsets * pos_bar_durations[:pos_offsets.shape[0], None]
 
-            # Grab the first note for each instrument group
-            utiming_ratio = self.__hvo[  # exact timing of the drum event (rel. to grid)
-                grid_pos, drum_voice_class + 2 * n_voices]
-
-            utiming = 0
-            if utiming_ratio < 0:
-                # if utiming comes left of grid, figure out the grid resolution left of the grid line
-                if grid_pos > 0:
-                    utiming = (self.grid_lines[grid_pos] - self.grid_lines[grid_pos - 1]) * \
-                              utiming_ratio
-                else:
-                    utiming = 0  # if utiming comes left of beginning,  snap it to the very first grid (loc[0]=0)
-            elif utiming_ratio > 0:
-                if grid_pos < (self.total_number_of_steps - 2):
-                    utiming = (self.grid_lines[grid_pos + 1] -
-                               self.grid_lines[grid_pos]) * utiming_ratio
-                else:
-                    utiming = (self.grid_lines[grid_pos] -
-                               self.grid_lines[grid_pos - 1]) * utiming_ratio
-                    # if utiming_ratio comes right of the last grid line, use the previous grid resolution for finding
-                    # the utiming value in ms
-
-            offsets[drum_event[0], drum_event[1]] = utiming*1000
-
-        return offsets
+        return neg_offsets+pos_offsets
 
     def get_bar_beat_hvo(self, hvo_str="hvo"):
         """
@@ -1366,6 +1382,23 @@ class HVO_Sequence(object):
     #   Utilities to import/export/Convert different score formats such as
     #       1. NoteSequence, 2. HVO array, 3. Midi
     #   --------------------------------------------------------------
+    def copy(self):
+        new = HVO_Sequence()
+        new.__dict__ = copy.copy(self.__dict__)
+        return new
+
+    def copy_empty(self):
+        new = HVO_Sequence()
+        new.__dict__ = copy.copy(self.__dict__)
+        new.__hvo = None
+        return new
+
+    def copy_zero(self):
+        new = HVO_Sequence()
+        new.__dict__ = copy.copy(self.__dict__)
+        if new.hvo is not None:
+            new.hvo = np.zeros_like(new.__hvo)
+        return new
 
     def to_note_sequence(self, midi_track_n=9):
         """
@@ -2322,48 +2355,19 @@ class HVO_Sequence(object):
 
         return microtiming_event_profile_1bar
 
-    def get_timing_accuracy(self):
+    def get_timing_accuracy(self, offsets_in_ms=False):
         # Calculate timing accuracy of the loop
-
-        if self.is_ready_for_use() is False:
-            return None
-
-        def get_average_timing_deviation(microtiming_matrix):
-            # Get vector of average microtiming deviation at each metrical position
-
-            average_timing_matrix = np.zeros([microtiming_matrix.shape[0]])
-            for i in range(microtiming_matrix.shape[0]):
-                row_sum = 0.0
-                hit_count = 0.0
-                row_is_empty = np.all(np.isnan(microtiming_matrix[i, :]))
-                if row_is_empty:
-                    average_timing_matrix[i] = np.nan
-                else:
-                    for j in range(microtiming_matrix.shape[1]):
-                        if np.isnan(microtiming_matrix[i, j]):
-                            pass
-                        else:
-                            row_sum += microtiming_matrix[i, j]
-                            hit_count += 1.0
-                    average_timing_matrix[i] = row_sum / hit_count
-            return average_timing_matrix
+        # timing accuracy is defined as the sum of microtiming deviations on 8th note positions
 
         # Get micro-timings in ms
-        microtiming_matrix = self.get("o", offsets_in_ms=True)
+        microtiming_matrix = self.get("o", offsets_in_ms=offsets_in_ms, use_NaN_for_non_hits=True)
 
-        average_timing_matrix = get_average_timing_deviation(microtiming_matrix)
+        if all(np.isnan(microtiming_matrix.flatten())):
+            return np.nan
 
-        swung_note_positions = list(range(average_timing_matrix.shape[0]))[3::4]
-        nonswing_timing = 0.0
-        nonswing_note_count = 0
-        triplet_positions = 1, 5, 9, 13, 17, 21, 25, 29
-
-        for i in range(average_timing_matrix.shape[0]):
-            if i not in swung_note_positions and i not in triplet_positions:
-                if ~np.isnan(average_timing_matrix[i]):
-                    nonswing_timing += abs(np.nan_to_num(average_timing_matrix[i]))
-                    nonswing_note_count += 1
-        timing_accuracy = nonswing_timing / float(nonswing_note_count)
+        average_timing_matrix = np.nanmean(microtiming_matrix, axis=1)
+        non_triplet_or_swung_positions = average_timing_matrix[0::2]
+        timing_accuracy = np.nanmean(np.abs(non_triplet_or_swung_positions))
 
         return timing_accuracy
 
@@ -2598,3 +2602,26 @@ class HVO_Sequence(object):
             is_perf = True
 
         return is_perf
+
+
+def empty_like(other_hvo_sequence):
+    """
+    Creates a copy of other_hvo_sequence while ignoring the hvo content
+    :param other_hvo_sequence:
+    :return:
+    """
+    new_hvo_seq = HVO_Sequence()
+    other_dict = copy.copy(other_hvo_sequence.__dict__)
+    new_hvo_seq.__dict__.update(other_dict)
+    new_hvo_seq.remove_hvo
+    return new_hvo_seq
+
+
+def zero_like(other_hvo_sequence):
+    new_hvo_seq = HVO_Sequence()
+    other_dict = copy.copy(other_hvo_sequence.__dict__)
+    new_hvo_seq.__dict__.update(other_dict)
+    if new_hvo_seq.hvo is not None:
+        new_hvo_seq.hvo = np.zeros_like(new_hvo_seq.hvo)
+
+    return new_hvo_seq
