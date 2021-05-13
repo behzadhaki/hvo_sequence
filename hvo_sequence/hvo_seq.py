@@ -80,11 +80,6 @@ class HVO_Sequence(object):
         #    append one sequence to the other
         pass
 
-    # todo implement indexing using []
-    def __sqb__(self, indices):
-        # returns a tempo and time_signature consistent segment of sequence
-        pass
-
     #   ----------------------------------------------------------------------
     #   Essential properties (which require getters and setters)
     #   Property getters and setter wrappers for ESSENTIAL class variables
@@ -159,17 +154,14 @@ class HVO_Sequence(object):
     def hvo(self):
 
         if self.__hvo is not None:
-            # Return 'synced' hvo array, meaning for hits == 0, velocities and offsets are returned as 0
-            # without modifying the actual values stored internally
+            # Return 'synced' hvo array, meaning for hits == 0, velocities and offsets are set to 0
+            # i.e. the actual values stored internally will be overridden by 0
             n_voices = int(self.__hvo.shape[1] / 3)
-
             hits_tmp = self.__hvo[:, :n_voices]
-            velocities_tmp = self.__hvo[:, n_voices:2*n_voices]
-            offsets_tmp = self.__hvo[:, 2*n_voices:]
+            self.__hvo[:, n_voices:2*n_voices] = self.__hvo[:, n_voices:2*n_voices]*self.__hvo[:, :n_voices]
+            self.__hvo[:, 2*n_voices:] = self.__hvo[:, 2*n_voices:]*self.__hvo[:, :n_voices]
 
-            return np.concatenate((hits_tmp, velocities_tmp * hits_tmp, offsets_tmp * hits_tmp), axis=1)
-
-        return None
+        return self.__hvo
 
     @hvo.setter
     def hvo(self, x):
@@ -1391,18 +1383,18 @@ class HVO_Sequence(object):
     #   --------------------------------------------------------------
     def copy(self):
         new = HVO_Sequence()
-        new.__dict__ = copy.copy(self.__dict__)
+        new.__dict__ = copy.deepcopy(self.__dict__)
         return new
 
     def copy_empty(self):
         new = HVO_Sequence()
-        new.__dict__ = copy.copy(self.__dict__)
+        new.__dict__ = copy.deepcopy(self.__dict__)
         new.__hvo = None
         return new
 
     def copy_zero(self):
         new = HVO_Sequence()
-        new.__dict__ = copy.copy(self.__dict__)
+        new.__dict__ = copy.deepcopy(self.__dict__)
         if new.hvo is not None:
             new.hvo = np.zeros_like(new.__hvo)
         return new
@@ -2618,15 +2610,15 @@ def empty_like(other_hvo_sequence):
     :return:
     """
     new_hvo_seq = HVO_Sequence()
-    other_dict = copy.copy(other_hvo_sequence.__dict__)
+    other_dict = copy.deepcopy(other_hvo_sequence.__dict__)
     new_hvo_seq.__dict__.update(other_dict)
-    new_hvo_seq.remove_hvo
+    new_hvo_seq.remove_hvo()
     return new_hvo_seq
 
 
 def zero_like(other_hvo_sequence):
     new_hvo_seq = HVO_Sequence()
-    other_dict = copy.copy(other_hvo_sequence.__dict__)
+    other_dict = copy.deepcopy(other_hvo_sequence.__dict__)
     new_hvo_seq.__dict__.update(other_dict)
     if new_hvo_seq.hvo is not None:
         new_hvo_seq.hvo = np.zeros_like(new_hvo_seq.hvo)
