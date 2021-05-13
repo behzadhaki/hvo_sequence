@@ -269,19 +269,8 @@ class HVO_Sequence(object):
 
             # reset voice
             if _reset_hits:
-                print("before reset")
-                print("self",self.hvo[:10, h_idx])
-                print("hvo_reset",hvo_reset.hvo[:10, h_idx])
-                print("hvo_reset_comp",hvo_reset_comp.hvo[:10, h_idx])
-
                 hvo_reset.__hvo[:, h_idx] = np.zeros(n_timesteps)
                 hvo_reset_comp.__hvo[:,h_idx] = self.hvo[:,h_idx]
-
-                print("\nafter reset")
-                print("self",self.hvo[:10, h_idx])
-                print("hvo_reset",hvo_reset.hvo[:10, h_idx])
-                print("hvo_reset_comp",hvo_reset_comp.hvo[:10, h_idx])
-
             if _reset_velocity:
                 hvo_reset.__hvo[:, v_idx] = np.zeros(n_timesteps)
                 hvo_reset_comp.__hvo[:,v_idx] = self.hvo[:,v_idx]
