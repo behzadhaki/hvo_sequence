@@ -66,8 +66,6 @@ class HVO_Sequence(object):
         self.__drum_mapping = None
         self.__hvo = None
 
-        self.__force_vo_reset = True
-
         # Use property setters to initiate properties (DON"T ASSIGN ABOVE so that the correct datatype is checked)
         if drum_mapping:
             self.drum_mapping = drum_mapping
@@ -185,30 +183,13 @@ class HVO_Sequence(object):
         # removes hvo content and resets to None
         self.__hvo = None
 
-    @property
-    def force_vo_reset(self):
-        return self.__force_vo_reset
-
-    @force_vo_reset.setter
-    def force_vo_reset(self, x):
-
-        # Ensure x is a boolean
-        assert isinstance(x, bool), "Expected boolean " \
-                                    "but received {}".format(type(x))
-
-        # Now, safe to update the local force_vo_reset boolean
-        self.__force_vo_reset = x
-
-    def reset_voices(self, voice_idx=None, reset_hits=True, reset_velocity=True, reset_offsets=True):
+    def reset_voices(self, voice_idx=None):
         """
         @param voice_idx:                   voice index or indexes (can be single value or list of values) according
                                             to the drum mapping
-        @param reset_hits:                  if True, resets hits in every voice in voice_idx. can be a list of
-                                            booleans where each index corresponds to a voice in voice_idx list
-        @param reset_velocity:              if True, resets velocities in every voice in voice_idx. can be a list of
-                                            booleans where each index corresponds to a voice in voice_idx list
-        @param reset_offsets:               if True, resets offsets in every voice in voice_idx. can be a list of
-                                            booleans where each index corresponds to a voice in voice_idx list
+        @return hvo_reset:                  returns new hvo_sequence object with the voices in voice_idx set to 0
+        @return hvo_reset_comp:             returns new hvo_sequence object with all voices set to 0 except the
+                                            voices in voice_idx
         """
 
         if voice_idx is None:
@@ -219,17 +200,6 @@ class HVO_Sequence(object):
         if isinstance(voice_idx, int):
             voice_idx = [voice_idx]
 
-        # props list lengths must be equal to voice_idx length
-        if isinstance(reset_hits, list) and len(reset_hits) != len(voice_idx):
-            warnings.warn("Reset_hits must be boolean or list of booleans of length equal to voice_idx")
-            return None
-        if isinstance(reset_velocity, list) and len(reset_velocity) != len(voice_idx):
-            warnings.warn("Reset_velocities must be boolean or list of booleans of length equal to voice_idx")
-            return None
-        if isinstance(reset_offsets, list) and len(reset_offsets) != len(voice_idx):
-            warnings.warn("Reset_offsets must be boolean or list of booleans of length equal to voice_idx")
-            return None
-
         n_voices = len(self.drum_mapping)  # number of instruments in the mapping
         n_timesteps = self.hvo.shape[0]  # number of frames
 
@@ -238,7 +208,7 @@ class HVO_Sequence(object):
         hvo_reset_comp = self.copy_zero() # copies a zero hvo, each voice will be later set to its values in hvo_seq
 
         # iterate voices in voice_idx list
-        for i, _voice_idx in enumerate(voice_idx):
+        for _voice_idx in voice_idx:
 
             if _voice_idx not in range(n_voices):
                 warnings.warn("Instrument index not in drum mapping")
@@ -248,35 +218,14 @@ class HVO_Sequence(object):
             v_idx = _voice_idx + n_voices  # velocity
             o_idx = _voice_idx + 2 * n_voices  # offset
 
-            _reset_hits = reset_hits
-            _reset_velocity = reset_velocity
-            _reset_offsets = reset_offsets
+            hvo_reset.hvo[:, h_idx] = np.zeros(n_timesteps)
+            hvo_reset_comp.hvo[:,h_idx] = self.hvo[:,h_idx]
 
-            # if props are given as list (one condition for each voice), assign value to _reset_prop
-            if isinstance(reset_hits, list):
-                _reset_hits = reset_hits[i]
-            if isinstance(reset_velocity, list):
-                _reset_velocity = reset_velocity[i]
-            if isinstance(reset_offsets, list):
-                _reset_offsets = reset_offsets[i]
+            hvo_reset.hvo[:, v_idx] = np.zeros(n_timesteps)
+            hvo_reset_comp.hvo[:,v_idx] = self.hvo[:,v_idx]
 
-            if self.force_vo_reset and _reset_hits:
-                if not _reset_velocity or not _reset_offsets:
-                    _reset_velocity = True
-                    _reset_offsets = True
-                    warnings.warn("Forcing velocity and offset reset for voice {}." \
-                                  " Deactivate setting force_vo_reset property to False".format(_voice_idx))
-
-            # reset voice
-            if _reset_hits:
-                hvo_reset.__hvo[:, h_idx] = np.zeros(n_timesteps)
-                hvo_reset_comp.__hvo[:,h_idx] = self.hvo[:,h_idx]
-            if _reset_velocity:
-                hvo_reset.__hvo[:, v_idx] = np.zeros(n_timesteps)
-                hvo_reset_comp.__hvo[:,v_idx] = self.hvo[:,v_idx]
-            if _reset_offsets:
-                hvo_reset.__hvo[:, o_idx] = np.zeros(n_timesteps)
-                hvo_reset_comp.__hvo[:,o_idx] = self.hvo[:,o_idx]
+            hvo_reset.hvo[:, o_idx] = np.zeros(n_timesteps)
+            hvo_reset_comp.hvo[:,o_idx] = self.hvo[:,o_idx]
 
         return hvo_reset, hvo_reset_comp
 
