@@ -37,5 +37,5 @@ if __name__ == "__main__":
     print(hvo_out_voices.hvo[:10,0],hvo_out_voices.hvo[:10,9],hvo_out_voices.hvo[:10,2*9])
 
     #mso
-    mso = hvo_reset.multiband_synthesized_onsets()
+    mso = hvo_reset.mso()
     print(mso.shape,hvo_reset.hvo.shape)

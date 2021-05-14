@@ -560,8 +560,7 @@ def cq_matrix(n_bins_per_octave, n_bins, f_min, n_fft, sr):
         c_mat[k - 1, kc[k - 1]:(kc[k + 1] + 1)] = wk / np.sum(wk)  # normalized to unit sum;
     return c_mat, f_cq  # matrix with triangular filterbank
 
-
-def onset_detection_fn(x, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr, mean_filter_size):
+def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr, mean_filter_size):
     """
     Filter bank for onset pattern calculation
     @param x: array
@@ -605,13 +604,9 @@ def onset_detection_fn(x, n_fft, win_length, hop_length, n_bins_per_octave, n_oc
     # clip
     od_fun = np.clip(od_fun / 2.25, 0, 1)  # 2.25 ?????????
 
-    # get logf_stft
-    logf_stft = librosa.power_to_db(x_cq_spec).astype('float32')
-    logf_stft = np.moveaxis(logf_stft, 1, 0)
+    return od_fun, f_cq
 
-    return od_fun, logf_stft, f_cq
-
-def reduce_frequency_bands_in_spectrogram(freq_out, freq_in, S):
+def reduce_f_bands_in_spec(freq_out, freq_in, S):
     """
     @param freq_out:        band center frequencies in output spectrogram
     @param freq_in:         band center frequencies in input spectrogram
@@ -654,8 +649,9 @@ def reduce_frequency_bands_in_spectrogram(freq_out, freq_in, S):
 
     return S_out
 
-def get_onset_detect(onset_strength):
+def detect_onset(onset_strength):
     """
+    Detects onset from onset strength envelope
 
     """
     n_timeframes = onset_strength.shape[0]
@@ -668,8 +664,6 @@ def get_onset_detect(onset_strength):
         onset_detect[time_frame_idx, band] = 1
 
     return onset_detect
-
-
 
 def map_onsets_to_grid(grid, onset_strength, onset_detect, hop_length, n_fft, sr):
     """
