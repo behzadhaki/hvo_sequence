@@ -75,7 +75,9 @@ if __name__ == "__main__":
 
     # Reset voices
     hvo_reset, hvo_out_voices = hvo_seq.reset_voices([0,1])
-    hvo_seq.reset_voices([8], reset_hits=True,reset_velocity=False)
+    print(hvo_seq.hvo[:10,0])
+    print(hvo_reset.hvo[:10,0])
+    print(hvo_out_voices.hvo[:10,0])
 
 
     #STFT
