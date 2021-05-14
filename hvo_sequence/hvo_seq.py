@@ -1738,11 +1738,11 @@ class HVO_Sequence(object):
 
         return mel_spec
 
-    def mso(self, sf_path="../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2", **kwargs):
+    def mso(self, **kwargs):
         """
-        Multiband synthesized onsets
+        Multiband synthesized onsets.
         """
-        # default values
+        sf_path= kwargs.get('sf_path', "../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2")
         sr = kwargs.get('sr', 44100)
         n_fft = kwargs.get('n_fft', 1024)
         win_length = kwargs.get('win_length', 1024)
@@ -1757,16 +1757,20 @@ class HVO_Sequence(object):
         y = self.synthesize(sr=sr, sf_path=sf_path)
         y /= np.max(np.abs(y))
 
+        # onset strength spectrogram
         spec, f_cq = onset_strength_spec(y, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr,
                                          mean_filter_size)
 
+        # multiband onset detection and strength
         mb_onset_strength = reduce_f_bands_in_spec(c_freq, f_cq, spec)
         mb_onset_detect = detect_onset(mb_onset_strength)
 
+        # map to grid
         grid = self.grid_lines
         strength_grid, onsets_grid = map_onsets_to_grid(grid, mb_onset_strength, mb_onset_detect, n_fft=n_fft,
                                                         hop_length=hop_length, sr=sr)
 
+        # concatenate in one single array
         mso = np.concatenate((strength_grid, onsets_grid), axis=1)
 
         return mso

@@ -532,11 +532,14 @@ def _getmicrotiming_event_profile_1bar(microtiming_matrix, kick_ix, snare_ix, ch
     return microtiming_event_profile_1bar
 
 
-#####
+#   -------------------------------------------------------------
+#   Utils for computing the MSO::Multiband Synthesized Onsets
+#   -------------------------------------------------------------
 
 def cq_matrix(n_bins_per_octave, n_bins, f_min, n_fft, sr):
     """
     Constant Q Transform matrix with triangular log-spaced filterbank.
+    Based on https://github.com/mcartwright/dafx2018_adt/blob/master/large_vocab_adt_dafx2018/features.py
     @param n_bins_per_octave: int
     @param n_bins: int
     @param f_min: float
@@ -562,7 +565,8 @@ def cq_matrix(n_bins_per_octave, n_bins, f_min, n_fft, sr):
 
 def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr, mean_filter_size):
     """
-    Filter bank for onset pattern calculation
+    Filter bank for onset pattern calculation.
+    Based on https://github.com/mcartwright/dafx2018_adt/blob/master/large_vocab_adt_dafx2018/features.py
     @param x: array
     @param n_fft: int
     @param win_length: int
