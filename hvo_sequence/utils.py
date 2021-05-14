@@ -1,6 +1,9 @@
 import numpy as np
 from hvo_sequence.custom_dtypes import Tempo, Time_Signature
 import math
+import scipy.signal
+import librosa
+import warnings
 
 def find_nearest(array, query):
     """
@@ -527,3 +530,209 @@ def _getmicrotiming_event_profile_1bar(microtiming_matrix, kick_ix, snare_ix, ch
     microtiming_event_profile_1bar = np.clip(timing_to_grid_profile + timing_to_cymbal_profile, 0, 1)
 
     return microtiming_event_profile_1bar
+
+
+#####
+
+def cq_matrix(n_bins_per_octave, n_bins, f_min, n_fft, sr):
+    """
+    Constant Q Transform matrix with triangular log-spaced filterbank.
+    @param n_bins_per_octave: int
+    @param n_bins: int
+    @param f_min: float
+    @param n_fft: int
+    @param sr: int
+    @return c_mat: matrix
+    @return: f_cq: list (triangular filters center frequencies)
+    """
+    # note range goes from -1 to bpo*num_oct for boundary issues
+    f_cq = f_min * 2 ** ((np.arange(-1, n_bins + 1)) / n_bins_per_octave)  # center frequencies
+    # centers in bins
+    kc = np.round(f_cq * (n_fft / sr)).astype(int)
+    c_mat = np.zeros([n_bins, int(np.round(n_fft / 2))])
+    for k in range(1, kc.shape[0] - 1):
+        l1 = kc[k] - kc[k - 1]
+        w1 = scipy.signal.triang((l1 * 2) + 1)
+        l2 = kc[k + 1] - kc[k]
+        w2 = scipy.signal.triang((l2 * 2) + 1)
+        wk = np.hstack(
+            [w1[0:l1], w2[l2:]])  # concatenate two halves. l1 and l2 are different because of the log-spacing
+        c_mat[k - 1, kc[k - 1]:(kc[k + 1] + 1)] = wk / np.sum(wk)  # normalized to unit sum;
+    return c_mat, f_cq  # matrix with triangular filterbank
+
+
+def onset_detection_fn(x, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr, mean_filter_size):
+    """
+    Filter bank for onset pattern calculation
+    @param x: array
+    @param n_fft: int
+    @param win_length: int
+    @param hop_length: int
+    @param n_bins_per_octave: int
+    @param n_octaves: int
+    @param f_min: float
+    @param sr: float. sample rate
+    @param mean_filter_size: int. dt in the differential calculation
+    @return od_fun: multi-band onset strength spectrogram
+    @return logf_stft: array with logarithmically scaled stft
+    @return f_cq: array with center frequencies of the constant-q transform
+    """
+    # calculate frequency constant-q transform
+    f_win = scipy.signal.hann(win_length)
+    x_spec = librosa.stft(x,
+                          n_fft=n_fft,
+                          hop_length=hop_length,
+                          win_length=win_length,
+                          window=f_win)
+    x_spec = np.abs(x_spec) / (2 * np.sum(f_win))
+
+    # get CQ Transform
+    f_cq_mat, f_cq = cq_matrix(n_bins_per_octave, n_octaves * n_bins_per_octave, f_min, win_length, sr)
+    x_cq_spec = np.dot(f_cq_mat, x_spec[:-1, :])
+
+    # subtract moving mean
+    # DIFFERENCE BETWEEN THE CURRENT FRAME AND THE MEAN OF THE PREVIOUS mean_filter_size FRAMES
+    b = np.concatenate([[1], np.ones(mean_filter_size, dtype=float) / -mean_filter_size])
+    od_fun = scipy.signal.lfilter(b, 1, x_cq_spec, axis=1)
+
+    # half-wave rectify
+    od_fun = np.maximum(0, od_fun)
+
+    # post-process OPs
+    od_fun = np.log10(1 + 1000 * od_fun)  ## log scaling
+    od_fun = np.abs(od_fun).astype('float32')
+    od_fun = np.moveaxis(od_fun, 1, 0)
+    # clip
+    od_fun = np.clip(od_fun / 2.25, 0, 1)  # 2.25 ?????????
+
+    # get logf_stft
+    logf_stft = librosa.power_to_db(x_cq_spec).astype('float32')
+    logf_stft = np.moveaxis(logf_stft, 1, 0)
+
+    return od_fun, logf_stft, f_cq
+
+def reduce_frequency_bands_in_spectrogram(freq_out, freq_in, S):
+    """
+    @param freq_out:        band center frequencies in output spectrogram
+    @param freq_in:         band center frequencies in input spectrogram
+    @param S:               spectrogram to reduce
+    @returns S_out:         spectrogram reduced in frequency
+    """
+
+    if len(freq_out) >= len(freq_in):
+        warnings.warn(
+            "Number of bands in reduced spectrogram should be smaller than initial number of bands in spectrogram")
+
+    n_timeframes = S.shape[0]
+    n_bands = len(freq_out)
+
+    # find index of closest input frequency
+    freq_out_idx = np.array([], dtype=int)
+
+    for f in freq_out:
+        freq_out_idx = np.append(freq_out_idx, np.abs(freq_in - f).argmin())
+
+    # band limits (not center)
+    freq_out_band_idx = np.array([0], dtype=int)
+
+    for i in range(len(freq_out_idx) - 1):
+        li = np.ceil((freq_out_idx[i + 1] - freq_out_idx[i]) / 2) + freq_out_idx[i]  # find left border of band
+        freq_out_band_idx = np.append(freq_out_band_idx, [li])
+
+    freq_out_band_idx = np.append(freq_out_band_idx, len(freq_in))  # add last frequency in input spectrogram
+    freq_out_band_idx = np.array(freq_out_band_idx, dtype=int)  # convert to int
+
+    # init empty spectrogram
+    S_out = np.zeros([n_timeframes, n_bands])
+
+    # reduce spectrogram
+    for i in range(len(freq_out_band_idx) - 1):
+        li = freq_out_band_idx[i] + 1  # band left index
+        if i == 0: li = 0
+        ri = freq_out_band_idx[i + 1]  # band right index
+        S_out[:, i] = np.max(S[:, li:ri], axis=1)  # pooling
+
+    return S_out
+
+def get_onset_detect(onset_strength):
+    """
+
+    """
+    n_timeframes = onset_strength.shape[0]
+    n_bands = onset_strength.shape[1]
+
+    onset_detect = np.zeros([n_timeframes, n_bands])
+
+    for band in range(n_bands):
+        time_frame_idx = librosa.onset.onset_detect(onset_envelope=onset_strength.T[band, :])
+        onset_detect[time_frame_idx, band] = 1
+
+    return onset_detect
+
+
+
+def map_onsets_to_grid(grid, onset_strength, onset_detect, hop_length, n_fft, sr):
+    """
+    Maps matrices of onset strength and onset detection into a grid with a lower temporal resolution.
+    @param grid:                 Array with timestamps
+    @param onset_strength:       Matrix of onset strength values (n_timeframes x n_bands)
+    @param onset_detect:         Matrix of onset detection (1,0) (n_timeframes x n_bands)
+    @param hop_length:
+    @param n_fft
+    @return onsets_grid:         Onsets with respect to lines in grid (len_grid x n_bands)
+    @return intensity_grid:      Strength values for each detected onset (len_grid x n_bands)
+    """
+
+    if onset_strength.shape != onset_detect.shape:
+        warnings.warn(
+            f"onset_strength shape and onset_detect shape must be equal. Instead, got {onset_strength.shape} and {onset_detect.shape}")
+
+    n_bands = onset_strength.shape[1]
+    n_timeframes = onset_detect.shape[0]
+    n_timesteps = len(grid) - 1 # last grid line is first line of next bar
+
+    # init intensity and onsets grid
+    strength_grid = np.zeros([n_timesteps, n_bands])
+    onsets_grid = np.zeros([n_timesteps, n_bands])
+
+    # time array
+    time = librosa.frames_to_time(np.arange(n_timeframes), sr=sr,
+                                  hop_length=hop_length, n_fft=n_fft)
+
+    #FIXME already defined in io_helpers. cannot be imported here because io_helpers has a HVO_Sequence() import
+    def get_grid_position_and_utiming_in_hvo(start_time, grid):
+        """
+        Finds closes grid line and the utiming deviation from the grid for a queried onset time in sec
+
+        @param start_time:                  Starting position of a note
+        @param grid:                        Grid lines (list of time stamps in sec)
+        @return tuple of grid_index,        the index of the grid line closes to note
+                and utiming:                utiming ratio in (-0.5, 0.5) range
+        """
+        grid_index, grid_sec = find_nearest(grid, start_time)
+
+        utiming = start_time - grid_sec  # utiming in sec
+
+        if utiming < 0:  # Convert to a ratio between (-0.5, 0.5)
+            if grid_index == 0:
+                utiming = 0
+            else:
+                utiming = utiming / (grid[grid_index] - grid[grid_index - 1])
+        else:
+            if grid_index == (grid.shape[0] - 1):
+                utiming = utiming / (grid[grid_index] - grid[grid_index - 1])
+            else:
+                utiming = utiming / (grid[grid_index + 1] - grid[grid_index])
+
+        return grid_index, utiming
+
+    # map onsets and strength into grid
+    for band in range(n_bands):
+        for timeframe_idx in range(n_timeframes):
+            if onset_detect[timeframe_idx, band]:  # if there is an onset detected, get grid index and utiming
+                grid_idx, utiming = get_grid_position_and_utiming_in_hvo(time[timeframe_idx], grid)
+                if grid_idx == n_timesteps : continue # in case that a hit is assigned to last grid line
+                strength_grid[grid_idx, band] = onset_strength[timeframe_idx, band]
+                onsets_grid[grid_idx, band] = utiming
+
+    return strength_grid, onsets_grid
