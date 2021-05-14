@@ -1738,6 +1738,10 @@ class HVO_Sequence(object):
 
         return mel_spec
 
+    #   -------------------------------------------------------------
+    #   MSO::Multiband Synthesized Onsets
+    #   -------------------------------------------------------------
+
     def mso(self, **kwargs):
         """
         Multiband synthesized onsets.
