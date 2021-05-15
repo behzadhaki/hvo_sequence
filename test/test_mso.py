@@ -31,7 +31,11 @@ if __name__ == "__main__":
     hvo_seq.hvo = np.concatenate((hvo_bar, hvo_bar), axis=0)
 
     # Reset voices
-    hvo_reset, hvo_out_voices = hvo_seq.reset_voices([0,1])
+    hvo_reset, hvo_out_voices = hvo_seq.reset_voices([0])
     print(hvo_seq.hvo[:10,0],hvo_seq.hvo[:10,9],hvo_seq.hvo[:10,2*9])
     print(hvo_reset.hvo[:10,0],hvo_reset.hvo[:10,9],hvo_reset.hvo[:10,2*9])
     print(hvo_out_voices.hvo[:10,0],hvo_out_voices.hvo[:10,9],hvo_out_voices.hvo[:10,2*9])
+
+    #mso
+    mso = hvo_reset.mso()
+    print(mso.shape,hvo_reset.hvo.shape)

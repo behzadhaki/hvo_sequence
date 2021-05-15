@@ -17,6 +17,7 @@ from hvo_sequence.utils import is_power_of_two, find_pitch_and_tag, cosine_simil
 from hvo_sequence.utils import _weight_groove, _reduce_part, fuzzy_Hamming_distance
 from hvo_sequence.utils import _get_kick_and_snare_syncopations, get_monophonic_syncopation
 from hvo_sequence.utils import get_weak_to_strong_ratio, _getmicrotiming_event_profile_1bar
+from hvo_sequence.utils import onset_strength_spec, reduce_f_bands_in_spec, detect_onset, map_onsets_to_grid
 
 from hvo_sequence.custom_dtypes import Tempo, Time_Signature, Metadata
 from hvo_sequence.drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
@@ -1736,6 +1737,47 @@ class HVO_Sequence(object):
             fig.savefig(plot_filename)
 
         return mel_spec
+
+    #   -------------------------------------------------------------
+    #   MSO::Multiband Synthesized Onsets
+    #   -------------------------------------------------------------
+
+    def mso(self, **kwargs):
+        """
+        Multiband synthesized onsets.
+        """
+        sf_path= kwargs.get('sf_path', "../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2")
+        sr = kwargs.get('sr', 44100)
+        n_fft = kwargs.get('n_fft', 1024)
+        win_length = kwargs.get('win_length', 1024)
+        hop_length = kwargs.get('hop_length', 512)
+        n_bins_per_octave = kwargs.get('n_bins_per_octave', 16)
+        n_octaves = kwargs.get('n_octaves', 9)
+        f_min = kwargs.get('f_min', 40)
+        mean_filter_size = kwargs.get('mean_filter_size', 22)
+        c_freq = kwargs.get('c_freq', [55, 90, 138, 175, 350, 6000, 8500, 12500])
+
+        # audio
+        y = self.synthesize(sr=sr, sf_path=sf_path)
+        y /= np.max(np.abs(y))
+
+        # onset strength spectrogram
+        spec, f_cq = onset_strength_spec(y, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr,
+                                         mean_filter_size)
+
+        # multiband onset detection and strength
+        mb_onset_strength = reduce_f_bands_in_spec(c_freq, f_cq, spec)
+        mb_onset_detect = detect_onset(mb_onset_strength)
+
+        # map to grid
+        grid = self.grid_lines
+        strength_grid, onsets_grid = map_onsets_to_grid(grid, mb_onset_strength, mb_onset_detect, n_fft=n_fft,
+                                                        hop_length=hop_length, sr=sr)
+
+        # concatenate in one single array
+        mso = np.concatenate((strength_grid, onsets_grid), axis=1)
+
+        return mso
 
     #   -------------------------------------------------------------
     #   Extract Rhythmical and Microtiming Features for Evaluation
