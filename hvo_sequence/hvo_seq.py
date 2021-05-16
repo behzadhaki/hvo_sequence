@@ -85,6 +85,7 @@ class HVO_Sequence(object):
     #   Property getters and setter wrappers for ESSENTIAL class variables
     #   ----------------------------------------------------------------------
 
+    @property
     def __version__(self):
         return self.__version
 
@@ -179,7 +180,6 @@ class HVO_Sequence(object):
     #   --------------------------------------------------------------
     #   Utilities to modify hvo sequence
     #   --------------------------------------------------------------
-    @property
     def remove_hvo(self):
         # removes hvo content and resets to None
         self.__hvo = None
