@@ -85,7 +85,6 @@ class HVO_Sequence(object):
     #   Property getters and setter wrappers for ESSENTIAL class variables
     #   ----------------------------------------------------------------------
 
-    @property
     def __version__(self):
         return self.__version
 
