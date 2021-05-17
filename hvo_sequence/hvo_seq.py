@@ -184,6 +184,13 @@ class HVO_Sequence(object):
         # removes hvo content and resets to None
         self.__hvo = None
 
+    def get_active_voices(self):
+        """
+        Get the voices that are active (i.e. have any hits) for this HVO
+        @return: Array with the active voice indices
+        """
+        return np.argwhere(np.sum(self.hits, axis=0) > 0)
+
     def reset_voices(self, voice_idx=None):
         """
         @param voice_idx:                   voice index or indexes (can be single value or list of values) according
@@ -245,7 +252,7 @@ class HVO_Sequence(object):
                 2: set to largest absolute offset at that time step
                 3: set to offset corresponding to max velocity value at that time step (DEFAULT)
                 4: set to average of offsets at that time step
-                5: set to absolute sum of offsets at that time step
+                5: set to sum of offsets at that time step
         velocity_aggregator_modes : int
             Integer to choose which velocity to keep:
                 0: set to max velocity value at that time step and set to 1 if multiple events
@@ -322,7 +329,7 @@ class HVO_Sequence(object):
             divider = np.sum(np.where(synced_offsets != 0, 1, 0), axis=1)
             new_offsets[all_idx, voice_idx] = np.sum(synced_offsets, axis=1) / np.where(divider != 0, divider, 1)
         else:
-            new_offsets[all_idx, voice_idx] = np.sum(np.abs(synced_offsets), axis=1)
+            new_offsets[all_idx, voice_idx] = np.sum(synced_offsets, axis=1)
 
         if reduce_dim:
             # if we want to return only 1 voice (instead of e.g. 9 with all the others to 0)
