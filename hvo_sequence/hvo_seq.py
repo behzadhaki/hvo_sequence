@@ -59,7 +59,7 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.4.1"
+        self.__version = "0.4.2"
 
         self.__metadata = Metadata()
 
@@ -1966,9 +1966,11 @@ class HVO_Sequence(object):
         # at maximum amplitude (=30 for 2 bar 4/4 loop)
 
         if self.is_ready_for_use() is True:
-            assert len(self.time_signatures) == 1 and self.time_signatures[0].denominator == 4, \
+            assert self.time_signatures[0].denominator == 4, \
                 "currently Can't calculate syncopation for patterns with multiple time signatures and " \
                 "time signature denominators other than 4"
+            if len(self.time_signatures) > 1:
+                warnings.warn("More than one time signatures: {}".format(self.time_signatures))
         else:
             return None
 
@@ -2219,7 +2221,10 @@ class HVO_Sequence(object):
         if self.is_ready_for_use() is False:
             return None
 
-        assert len(self.time_signatures) == 1, "Currently Swing calculation doesn't support time signature change"
+        if len(self.time_signatures) > 1:
+            warnings.warn("Currently doesn't support multiple time signatures. Received: {}".format(
+                self.time_signatures))
+        
         assert self.grid_type_per_segments[0] == "binary" and self.time_signatures[0].denominator == 4, \
             "Currently Swing calculation can only be done for binary grids with time signature denominator of 4"
 
@@ -2295,8 +2300,10 @@ class HVO_Sequence(object):
         if self.is_ready_for_use() is False:
             return None
 
-        assert len(self.time_signatures) == 1, " time signature missing or multiple time signatures." \
-                                               "Currently  calculation doesn't support time signature change"
+        if len(self.time_signatures) > 1:
+            warnings.warn("Currently doesn't support multiple time signatures. Received: {}".format(
+                self.time_signatures))
+
         assert self.grid_type_per_segments[0] == "binary" and self.time_signatures[0].denominator == 4, \
             "Currently  calculation can only be done for binary grids with time signature denominator of 4"
 
@@ -2352,7 +2359,10 @@ class HVO_Sequence(object):
         if self.is_ready_for_use() is False:
             return None
 
-        assert len(self.time_signatures) == 1, "Currently Swing calculation doesn't support time signature change"
+        if len(self.time_signatures) > 1:
+            warnings.warn("Currently doesn't support multiple time signatures. Received: {}".format(
+                self.time_signatures))
+            
         assert self.grid_type_per_segments[0] == "binary" and self.time_signatures[0].denominator == 4, \
             "Currently Swing calculation can only be done for binary grids with time signature denominator of 4"
 
