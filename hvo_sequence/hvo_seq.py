@@ -230,7 +230,7 @@ class HVO_Sequence(object):
 
         return hvo_reset, hvo_reset_comp
 
-    def flatten_voices(self, get_velocities=True, reduce_dim=False, voice_idx=0):
+    def flatten_voices(self, offset_aggregator_modes=3, velocity_aggregator_modes=1, get_velocities=True, reduce_dim=False, voice_idx=2):
 
         """ Flatten all voices into a single tapped sequence. If there are several voices hitting at the same
         time step, the loudest one will be selected and its offset will be kept, however velocity is discarded
@@ -238,6 +238,21 @@ class HVO_Sequence(object):
 
         Parameters
         ----------
+        offset_aggregator_modes : int
+            Integer to choose which offset to keep:
+                0: set to offset corresponding to max velocity value at that time step and set to 0 if multiple events
+                1: set to smallest absolute offset at that time step
+                2: set to largest absolute offset at that time step
+                3: set to offset corresponding to max velocity value at that time step (DEFAULT)
+                4: set to average of offsets at that time step
+                5: set to absolute sum of offsets at that time step
+        velocity_aggregator_modes : int
+            Integer to choose which velocity to keep:
+                0: set to max velocity value at that time step and set to 1 if multiple events
+                1: set to max velocity value at that time step (DEFAULT)
+                2: set to velocity of the event with smallest offset
+                3: set to average of velocities at that time step
+                4: set to sum of velocities at that time step
         get_velocities: bool
             When set to True the function will return an hvo array with the hits, velocities and
             offsets of the voice with the hit that has maximum velocity at each time step, when
@@ -253,8 +268,8 @@ class HVO_Sequence(object):
             one voice.
         """
 
-        # Store number of voices
-        n_voices_keep = self.number_of_voices
+        assert(0 <= offset_aggregator_modes <= 5), "invalid offset_aggregator_modes"
+        assert(0 <= velocity_aggregator_modes <= 4), "invalid velocity_aggregator_modes"
 
         if not reduce_dim:
             # Make sure voice index is within range
@@ -262,48 +277,64 @@ class HVO_Sequence(object):
         else:
             # Overwrite voice index
             voice_idx = 0
-            # Overwrite number of voices: we only want to keep one
-            n_voices_keep = 1
 
-        # Get number of time steps
         time_steps = self.hvo.shape[0]
 
-        # Copying to new arrays since we don't want to modify existing internal hvo
-        _hits = self.hits.copy()
-        _velocities = self.velocities.copy()
-        _offsets = self.offsets.copy()
+        new_hits = np.zeros_like(self.hits)
+        new_velocities = np.zeros_like(self.velocities)
+        new_offsets = np.zeros_like(self.offsets)
 
-        for i in np.arange(time_steps):
+        synced_velocities = self.hits * self.velocities
+        synced_offsets = self.hits * self.offsets
 
-            # initialize 3 temporary arrays
-            new_hits, new_velocities, new_offsets = np.zeros((3, n_voices_keep))
+        all_idx = np.arange(time_steps)
+        idx_max_vel = np.argmax(synced_velocities, axis=1)
+        idx_multiple_hits = np.argwhere(np.sum(self.hits, axis=1) > 1)
+        idx_smallest_offsets = np.argmin(np.abs(synced_offsets), axis=1)
+        idx_biggest_offsets = np.argmax(np.abs(synced_offsets), axis=1)
 
-            # if there is any hit at that timestep
-            if np.any(_hits[i, :] == 1):
-                # get index of voice with max velocity
-                _idx_keep = np.argmax(_velocities[i, :])
+        hit_idx = np.extract(np.any(self.hits != 0, axis=1), all_idx)
+        new_hits[hit_idx, voice_idx] = 1
 
-                # copy the hit, velocity and offset of the voice in that timestep with the maximum velocity
-                new_hits[voice_idx] = 1
-                new_velocities[voice_idx] = _velocities[i, _idx_keep]
-                new_offsets[voice_idx] = _offsets[i, _idx_keep]
+        if velocity_aggregator_modes == 0:
+            new_velocities[all_idx, voice_idx] = synced_velocities[all_idx, idx_max_vel]
+            new_velocities[idx_multiple_hits, voice_idx] = 1
+        elif velocity_aggregator_modes == 1:
+            new_velocities[all_idx, voice_idx] = synced_velocities[all_idx, idx_max_vel]
+        elif velocity_aggregator_modes == 2:
+            new_velocities[all_idx, voice_idx] = synced_velocities[all_idx, idx_smallest_offsets]
+        elif velocity_aggregator_modes == 3:
+            divider = np.sum(np.where(synced_velocities > 0, 1, 0), axis=1)
+            new_velocities[all_idx, voice_idx] = np.sum(synced_velocities, axis=1) / np.where(divider != 0, divider, 1)
+        else:
+            new_velocities[all_idx, voice_idx] = np.sum(synced_velocities, axis=1)
 
-            # copy time step into bigger array
-            _hits[i, :] = new_hits
-            _velocities[i, :] = new_velocities
-            _offsets[i, :] = new_offsets
+        if offset_aggregator_modes == 0:
+            new_offsets[all_idx, voice_idx] = synced_offsets[all_idx, idx_max_vel]
+            new_offsets[idx_multiple_hits, voice_idx] = 0
+        elif offset_aggregator_modes == 1:
+            new_offsets[all_idx, voice_idx] = synced_offsets[all_idx, idx_smallest_offsets]
+        elif offset_aggregator_modes == 2:
+            new_offsets[all_idx, voice_idx] = synced_offsets[all_idx, idx_biggest_offsets]
+        elif offset_aggregator_modes == 3:
+            new_offsets[all_idx, voice_idx] = synced_offsets[all_idx, idx_max_vel]
+        elif offset_aggregator_modes == 4:
+            divider = np.sum(np.where(synced_offsets != 0, 1, 0), axis=1)
+            new_offsets[all_idx, voice_idx] = np.sum(synced_offsets, axis=1) / np.where(divider != 0, divider, 1)
+        else:
+            new_offsets[all_idx, voice_idx] = np.sum(np.abs(synced_offsets), axis=1)
 
         if reduce_dim:
             # if we want to return only 1 voice (instead of e.g. 9 with all the others to 0)
             # we remove the other dimensions and transform it into a 2-dim array so that the
             # concatenate after will join the arrays in the right axis
-            _hits = np.array([_hits[:, voice_idx]]).T
-            _velocities = np.array([_velocities[:, voice_idx]]).T
-            _offsets = np.array([_offsets[:, voice_idx]]).T
+            new_hits = np.array([new_hits[:, voice_idx]]).T
+            new_velocities = np.array([new_velocities[:, voice_idx]]).T
+            new_offsets = np.array([new_offsets[:, voice_idx]]).T
 
         # concatenate arrays
-        flat_hvo = np.concatenate((_hits, _velocities, _offsets), axis=1) if get_velocities else np.concatenate(
-            (_hits, _offsets), axis=1)
+        flat_hvo = np.concatenate((new_hits, new_velocities, new_offsets), axis=1)\
+            if get_velocities else np.concatenate((new_hits, new_offsets), axis=1)
         return flat_hvo
 
     @property
