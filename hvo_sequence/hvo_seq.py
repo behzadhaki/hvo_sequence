@@ -189,7 +189,7 @@ class HVO_Sequence(object):
         Get the voices that are active (i.e. have any hits) for this HVO
         @return: Array with the active voice indices
         """
-        return np.argwhere(np.sum(self.hits, axis=0) > 0)
+        return np.argwhere(np.sum(self.hits, axis=0) > 0).flatten()
 
     def reset_voices(self, voice_idx=None):
         """
