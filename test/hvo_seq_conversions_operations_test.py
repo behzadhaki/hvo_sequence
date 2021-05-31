@@ -8,7 +8,7 @@ if __name__ == "__main__":
 
     # Add two time_signatures
     hvo_seq.add_time_signature(0, 4, 4, [4])
-    hvo_seq.add_time_signature(13, 6, 8, [3, 2])
+    # hvo_seq.add_time_signature(13, 6, 8, [3, 2])
 
     # Add two tempos
     hvo_seq.add_tempo(0, 50)

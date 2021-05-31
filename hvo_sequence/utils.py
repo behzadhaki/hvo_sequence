@@ -250,8 +250,8 @@ def _get_2bar_segments(part, steps_in_measure):
 
     # first make_sure_length_is_multiple of 16, if not append zero arrays
     if part.shape[0] % steps_in_measure != 0:
-        pad_size = steps_in_measure - part.shape[0]
-        part = np.pad(part, (0, pad_size), mode="constant")
+        pad_size = int(np.ceil(part.shape[0]/steps_in_measure)*steps_in_measure - part.shape[0])
+        part = np.pad(part, ((0, pad_size), (0, 0)), mode="constant")
 
     # match length to multiple 2 bars (if shorter repeat last bar)
     if part.shape[0] % (2 * steps_in_measure) != 0:
