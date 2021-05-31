@@ -560,6 +560,8 @@ def cq_matrix(n_bins_per_octave, n_bins, f_min, n_fft, sr):
         w2 = scipy.signal.triang((l2 * 2) + 1)
         wk = np.hstack(
             [w1[0:l1], w2[l2:]])  # concatenate two halves. l1 and l2 are different because of the log-spacing
+        if (kc[k + 1] + 1) > c_mat.shape[1]: # if out of matrix shape, continue
+            continue
         c_mat[k - 1, kc[k - 1]:(kc[k + 1] + 1)] = wk / np.sum(wk)  # normalized to unit sum;
     return c_mat, f_cq  # matrix with triangular filterbank
 
@@ -589,8 +591,8 @@ def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_o
                           window=f_win)
     x_spec = np.abs(x_spec) / (2 * np.sum(f_win))
 
-    # get CQ Transform
-    f_cq_mat, f_cq = cq_matrix(n_bins_per_octave, n_octaves * n_bins_per_octave, f_min, win_length, sr)
+    # get Constant-Q spectrogram
+    f_cq_mat, f_cq = cq_matrix(n_bins_per_octave, n_octaves * n_bins_per_octave, f_min, n_fft, sr)
     x_cq_spec = np.dot(f_cq_mat, x_spec[:-1, :])
 
     # subtract moving mean
@@ -606,7 +608,8 @@ def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_o
     od_fun = np.abs(od_fun).astype('float32')
     od_fun = np.moveaxis(od_fun, 1, 0)
     # clip
-    od_fun = np.clip(od_fun / 2.25, 0, 1)  # 2.25 ?????????
+    # FIXME check value of 2.25
+    od_fun = np.clip(od_fun / 2.25, 0, 1)
 
     return od_fun, f_cq
 
