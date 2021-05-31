@@ -579,8 +579,7 @@ def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_o
     @param sr: float. sample rate
     @param mean_filter_size: int. dt in the differential calculation
     @return od_fun: multi-band onset strength spectrogram
-    @return logf_stft: array with logarithmically scaled stft
-    @return f_cq: array with center frequencies of the constant-q transform
+    @return f_cq: frequency bins of od_fun
     """
     # calculate frequency constant-q transform
     f_win = scipy.signal.hann(win_length)
