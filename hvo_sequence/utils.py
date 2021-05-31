@@ -652,7 +652,10 @@ def reduce_f_bands_in_spec(freq_out, freq_in, S):
         li = freq_out_band_idx[i] + 1  # band left index
         if i == 0: li = 0
         ri = freq_out_band_idx[i + 1]  # band right index
-        S_out[:, i] = np.max(S[:, li:ri], axis=1)  # pooling
+        if li >= ri: # bands out of range
+            S_out[:,i] = 0
+        else:
+            S_out[:, i] = np.max(S[:, li:ri], axis=1)  # pooling
 
     return S_out
 
