@@ -538,7 +538,7 @@ def _getmicrotiming_event_profile_1bar(microtiming_matrix, kick_ix, snare_ix, ch
 
 def cq_matrix(n_bins_per_octave, n_bins, f_min, n_fft, sr):
     """
-    Constant Q Transform matrix with triangular log-spaced filterbank.
+    Constant-Q filterbank frequencies
     Based on https://github.com/mcartwright/dafx2018_adt/blob/master/large_vocab_adt_dafx2018/features.py
     @param n_bins_per_octave: int
     @param n_bins: int
