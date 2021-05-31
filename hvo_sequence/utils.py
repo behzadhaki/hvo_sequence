@@ -594,8 +594,7 @@ def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_o
     f_cq_mat, f_cq = cq_matrix(n_bins_per_octave, n_octaves * n_bins_per_octave, f_min, n_fft, sr)
     x_cq_spec = np.dot(f_cq_mat, x_spec[:-1, :])
 
-    # subtract moving mean
-    # DIFFERENCE BETWEEN THE CURRENT FRAME AND THE MEAN OF THE PREVIOUS mean_filter_size FRAMES
+    # subtract moving mean: difference between the current frame and the average of the previous mean_filter_size frames
     b = np.concatenate([[1], np.ones(mean_filter_size, dtype=float) / -mean_filter_size])
     od_fun = scipy.signal.lfilter(b, 1, x_cq_spec, axis=1)
 
