@@ -581,7 +581,7 @@ def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_o
     @return od_fun: multi-band onset strength spectrogram
     @return f_cq: frequency bins of od_fun
     """
-    # calculate frequency constant-q transform
+    # get stft
     f_win = scipy.signal.hann(win_length)
     x_spec = librosa.stft(x,
                           n_fft=n_fft,
@@ -590,7 +590,7 @@ def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_o
                           window=f_win)
     x_spec = np.abs(x_spec) / (2 * np.sum(f_win))
 
-    # get Constant-Q spectrogram
+    # multiply stft by constant-q filterbank
     f_cq_mat, f_cq = cq_matrix(n_bins_per_octave, n_octaves * n_bins_per_octave, f_min, n_fft, sr)
     x_cq_spec = np.dot(f_cq_mat, x_spec[:-1, :])
 
