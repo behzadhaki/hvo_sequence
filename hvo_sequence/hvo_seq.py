@@ -1780,6 +1780,27 @@ class HVO_Sequence(object):
     #   MSO::Multiband Synthesized Onsets
     #   -------------------------------------------------------------
 
+    def get_onset_strength_spec(self,**kwargs):
+        sf_path = kwargs.get('sf_path', "../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2")
+        sr = kwargs.get('sr', 44100)
+        n_fft = kwargs.get('n_fft', 1024)
+        win_length = kwargs.get('win_length', 1024)
+        hop_length = kwargs.get('hop_length', 512)
+        n_bins_per_octave = kwargs.get('n_bins_per_octave', 16)
+        n_octaves = kwargs.get('n_octaves', 9)
+        f_min = kwargs.get('f_min', 40)
+        mean_filter_size = kwargs.get('mean_filter_size', 22)
+
+        # audio
+        y = self.synthesize(sr=sr, sf_path=sf_path)
+        y /= np.max(np.abs(y))
+
+        # onset strength spectrogram
+        spec, f_cq = onset_strength_spec(y, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr,
+                                         mean_filter_size)
+
+        return spec, f_cq
+
     def mso(self, **kwargs):
         """
         Multiband synthesized onsets.
@@ -1796,12 +1817,14 @@ class HVO_Sequence(object):
         c_freq = kwargs.get('c_freq', [55, 90, 138, 175, 350, 6000, 8500, 12500])
 
         # audio
-        y = self.synthesize(sr=sr, sf_path=sf_path)
-        y /= np.max(np.abs(y))
+        #y = self.synthesize(sr=sr, sf_path=sf_path)
+        #y /= np.max(np.abs(y))
 
         # onset strength spectrogram
-        spec, f_cq = onset_strength_spec(y, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr,
-                                         mean_filter_size)
+        spec, f_cq = self.get_onset_strength_spec(n_fft=n_fft, win_length=win_length, hop_length=hop_length,
+                                                  n_bins_per_octave=n_bins_per_octave,
+                                                  n_octaves=n_octaves,
+                                                  f_min=f_min, sr=sr,mean_filter_size=mean_filter_size)
 
         # multiband onset detection and strength
         mb_onset_strength = reduce_f_bands_in_spec(c_freq, f_cq, spec)

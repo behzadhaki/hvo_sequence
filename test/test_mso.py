@@ -39,3 +39,8 @@ if __name__ == "__main__":
     #mso
     mso = hvo_reset.mso()
     print(mso.shape,hvo_reset.hvo.shape)
+    spec, f = hvo_reset.get_onset_strength_spec()
+
+    import matplotlib.pyplot as plt
+    plt.pcolormesh(spec.T)
+    plt.show()
