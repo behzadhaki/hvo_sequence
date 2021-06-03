@@ -17,7 +17,7 @@ from hvo_sequence.utils import is_power_of_two, find_pitch_and_tag, cosine_simil
 from hvo_sequence.utils import _weight_groove, _reduce_part, fuzzy_Hamming_distance
 from hvo_sequence.utils import _get_kick_and_snare_syncopations, get_monophonic_syncopation
 from hvo_sequence.utils import get_weak_to_strong_ratio, _getmicrotiming_event_profile_1bar
-from hvo_sequence.utils import onset_strength_spec, reduce_f_bands_in_spec, detect_onset, map_onsets_to_grid
+from hvo_sequence.utils import onset_strength_spec, reduce_f_bands_in_spec, detect_onset, map_onsets_to_grid, logf_stft
 
 from hvo_sequence.custom_dtypes import Tempo, Time_Signature, Metadata
 from hvo_sequence.drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
@@ -1779,6 +1779,25 @@ class HVO_Sequence(object):
     #   -------------------------------------------------------------
     #   MSO::Multiband Synthesized Onsets
     #   -------------------------------------------------------------
+
+    def get_logf_stft(self,**kwargs):
+        sf_path = kwargs.get('sf_path', "../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2")
+        sr = kwargs.get('sr', 44100)
+        n_fft = kwargs.get('n_fft', 1024)
+        win_length = kwargs.get('win_length', 1024)
+        hop_length = kwargs.get('hop_length', 512)
+        n_bins_per_octave = kwargs.get('n_bins_per_octave', 16)
+        n_octaves = kwargs.get('n_octaves', 9)
+        f_min = kwargs.get('f_min', 40)
+        mean_filter_size = kwargs.get('mean_filter_size', 22)
+
+        # audio
+        y = self.synthesize(sr=sr, sf_path=sf_path)
+        y /= np.max(np.abs(y))
+
+        mX, f_bins = logf_stft(y, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr)
+
+        return mX, f_bins
 
     def get_onset_strength_spec(self,**kwargs):
         sf_path = kwargs.get('sf_path', "../hvo_sequence/soundfonts/Standard_Drum_Kit.sf2")
