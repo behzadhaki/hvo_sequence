@@ -1816,15 +1816,11 @@ class HVO_Sequence(object):
         mean_filter_size = kwargs.get('mean_filter_size', 22)
         c_freq = kwargs.get('c_freq', [55, 90, 138, 175, 350, 6000, 8500, 12500])
 
-        # audio
-        #y = self.synthesize(sr=sr, sf_path=sf_path)
-        #y /= np.max(np.abs(y))
-
         # onset strength spectrogram
-        spec, f_cq = self.get_onset_strength_spec(n_fft=n_fft, win_length=win_length, hop_length=hop_length,
-                                                  n_bins_per_octave=n_bins_per_octave,
-                                                  n_octaves=n_octaves,
-                                                  f_min=f_min, sr=sr,mean_filter_size=mean_filter_size)
+        spec, f_cq = self.get_onset_strength_spec(sf_path=sf_path, n_fft=n_fft, win_length=win_length,
+                                                  hop_length=hop_length, n_bins_per_octave=n_bins_per_octave,
+                                                  n_octaves=n_octaves, f_min=f_min, sr=sr,
+                                                  mean_filter_size=mean_filter_size)
 
         # multiband onset detection and strength
         mb_onset_strength = reduce_f_bands_in_spec(c_freq, f_cq, spec)
