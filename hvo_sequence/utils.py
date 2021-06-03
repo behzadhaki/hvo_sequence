@@ -565,9 +565,38 @@ def cq_matrix(n_bins_per_octave, n_bins, f_min, n_fft, sr):
         c_mat[k - 1, kc[k - 1]:(kc[k + 1] + 1)] = wk / np.sum(wk)  # normalized to unit sum;
     return c_mat, f_cq  # matrix with triangular filterbank
 
+def logf_stft(x, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr):
+    """
+    Logf-stft
+    Based on https://github.com/mcartwright/dafx2018_adt/blob/master/large_vocab_adt_dafx2018/features.py
+    @param x: array
+    @param n_fft: int
+    @param win_length: int
+    @param hop_length: int
+    @param n_bins_per_octave: int
+    @param n_octaves: int
+    @param f_min: float
+    @param sr: float. sample rate
+    @return x_cq_spec: logf-stft
+    """
+    f_win = scipy.signal.hann(win_length)
+    x_spec = librosa.stft(x,
+                          n_fft=n_fft,
+                          hop_length=hop_length,
+                          win_length=win_length,
+                          window=f_win)
+    x_spec = np.abs(x_spec) / (2 * np.sum(f_win))
+
+    # multiply stft by constant-q filterbank
+    f_cq_mat, f_cq = cq_matrix(n_bins_per_octave, n_octaves * n_bins_per_octave, f_min, n_fft, sr)
+    x_cq_spec = np.dot(f_cq_mat, x_spec[:-1, :])
+    stft = librosa.power_to_db(x_cq_spec).astype('float32')
+
+    return stft, f_cq
+
 def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_octaves, f_min, sr, mean_filter_size):
     """
-    Filter bank for onset pattern calculation.
+    Onset strength spectrogram
     Based on https://github.com/mcartwright/dafx2018_adt/blob/master/large_vocab_adt_dafx2018/features.py
     @param x: array
     @param n_fft: int
@@ -581,7 +610,7 @@ def onset_strength_spec(x, n_fft, win_length, hop_length, n_bins_per_octave, n_o
     @return od_fun: multi-band onset strength spectrogram
     @return f_cq: frequency bins of od_fun
     """
-    # get stft
+
     f_win = scipy.signal.hann(win_length)
     x_spec = librosa.stft(x,
                           n_fft=n_fft,

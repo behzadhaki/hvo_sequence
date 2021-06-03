@@ -42,5 +42,9 @@ if __name__ == "__main__":
     spec, f = hvo_reset.get_onset_strength_spec()
 
     import matplotlib.pyplot as plt
-    plt.pcolormesh(spec.T)
+    #plt.pcolormesh(spec.T)
+    #plt.show()
+
+    X, f = hvo_reset.get_logf_stft()
+    plt.pcolormesh(X)
     plt.show()
