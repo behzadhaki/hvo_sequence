@@ -3,6 +3,7 @@ from hvo_sequence.drum_mappings import ROLAND_REDUCED_MAPPING, Groove_Toolbox_5P
 
 import numpy as np
 
+from tqdm import tqdm
 
 if __name__ == "__main__":
 
@@ -37,6 +38,9 @@ if __name__ == "__main__":
     hvo_seq_b.hvo = np.concatenate((hits, vels_b, offs_b), axis=1)
 
     # Calculate distance metrics
+    for i in tqdm(range(2048*2)):
+        hvo_seq.calculate_all_distances_with(hvo_seq_b)
+
     print(hvo_seq.calculate_all_distances_with(hvo_seq_b))
     print(hvo_seq.calculate_all_distances_with(hvo_seq))
 
