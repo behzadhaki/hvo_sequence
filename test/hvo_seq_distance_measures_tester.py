@@ -44,3 +44,10 @@ if __name__ == "__main__":
     print(hvo_seq.calculate_all_distances_with(hvo_seq_b))
     print(hvo_seq.calculate_all_distances_with(hvo_seq))
 
+hvo_seq.to_html_plot(show_figure=True)
+
+hits = hvo_seq.hvo[:, :9]
+vels = hvo_seq.hvo[:, 9:18]
+offs = hvo_seq.hvo[:, 18:]
+
+np.argwhere(hits>0) - np.argwhere(vels!=0)

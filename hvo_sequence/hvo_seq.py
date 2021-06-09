@@ -59,7 +59,7 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.4.3"
+        self.__version = "0.4.4"
 
         self.__metadata = Metadata()
 
@@ -563,9 +563,10 @@ class HVO_Sequence(object):
         hvo_arr = []
 
         # Get h, v, o
-        h = self.hvo[:, :self.number_of_voices]
-        v = self.hvo[:, self.number_of_voices:self.number_of_voices*2]
+        h = copy.deepcopy(self.hvo[:, :self.number_of_voices])
+        v = copy.deepcopy(self.hvo[:, self.number_of_voices:self.number_of_voices*2])
         o = self.get_offsets_in_ms() if offsets_in_ms else self.hvo[:, self.number_of_voices*2:]
+        o = copy.deepcopy(o)
         zero = np.zeros_like(h)
 
         # replace vels and offsets with no associated hit to np.nan if use_NaN_for_non_hits set to True
