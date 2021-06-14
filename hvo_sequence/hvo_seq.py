@@ -1611,7 +1611,6 @@ class HVO_Sequence(object):
             my_label = []
             tempo_lower_b = self.tempo_consistent_segment_lower_bounds
             for ix, tempo in enumerate(self.tempos):
-                print("list(unique_pitches)", list(unique_pitches))
                 my_label.append(Label(x=grid_lines[tempo_lower_b[ix]], y=list(unique_pitches)[-1] + 2,
                                       text="qpm {:.1f}".format(tempo.qpm)))
                 my_label[-1].text_font_size = tempo_font_size
