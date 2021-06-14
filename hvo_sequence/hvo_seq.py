@@ -26,6 +26,7 @@ from hvo_sequence.metrical_profiles import WITEK_SYNCOPATION_METRICAL_PROFILE_4_
 from hvo_sequence.metrical_profiles import Longuet_Higgins_METRICAL_PROFILE_4_4_16th_NOTE
 from hvo_sequence.metrical_profiles import RHYTHM_SALIENCE_PROFILE_4_4_16th_NOTE
 
+from bokeh.plotting import figure
 
 class HVO_Sequence(object):
 
@@ -1552,11 +1553,19 @@ class HVO_Sequence(object):
 
         ns = self.to_note_sequence(midi_track_n=9)
         # Create the initial piano roll
-        _html_fig = note_seq.plot_sequence(ns, show_figure=False)
+        try:
+            _html_fig = note_seq.plot_sequence(ns, show_figure=False)
+            _error_plotting = False
+        except:
+            _error_plotting = True
+            _html_fig = figure()
+
         _html_fig.title.text = filename.split("/")[-1]  # add title
 
         # Add y-labels corresponding to instrument names rather than midi note ("kick", "snare", ...)
         unique_pitches = set([note.pitch for note in ns.notes])
+        if len(list(unique_pitches))==0:
+            unique_pitches = {42}
 
         # Find corresponding drum tags
         drum_tags = []
@@ -1602,6 +1611,7 @@ class HVO_Sequence(object):
             my_label = []
             tempo_lower_b = self.tempo_consistent_segment_lower_bounds
             for ix, tempo in enumerate(self.tempos):
+                print("list(unique_pitches)", list(unique_pitches))
                 my_label.append(Label(x=grid_lines[tempo_lower_b[ix]], y=list(unique_pitches)[-1] + 2,
                                       text="qpm {:.1f}".format(tempo.qpm)))
                 my_label[-1].text_font_size = tempo_font_size
@@ -1923,9 +1933,9 @@ class HVO_Sequence(object):
         """
         lmh_hits = self.get_with_different_drum_mapping("h", tgt_drum_mapping=low_mid_hi_drum_map)
         total_hits = np.count_nonzero(self.hits)
-        lowness = np.count_nonzero(lmh_hits[:, 0])/total_hits
-        midness = np.count_nonzero(lmh_hits[:, 1])/total_hits
-        hiness = np.count_nonzero(lmh_hits[:, 2])/total_hits
+        lowness = np.count_nonzero(lmh_hits[:, 0])/total_hits if total_hits != 0 else 0
+        midness = np.count_nonzero(lmh_hits[:, 1])/total_hits if total_hits != 0 else 0
+        hiness = np.count_nonzero(lmh_hits[:, 2])/total_hits if total_hits != 0 else 0
         return lowness, midness, hiness
 
     def get_velocity_score_symmetry(self):
@@ -1946,7 +1956,9 @@ class HVO_Sequence(object):
         # get symmetry level
         symmetry_level = (1 - diff)
 
-        return np.nanmean(symmetry_level)
+        res = np.nanmean(symmetry_level)
+        res = 0 if np.isnan(res) else res
+        return res
 
     #todo easily adaptable to alternative grids if implementation is changed
     def get_total_weak_to_strong_ratio(self):
