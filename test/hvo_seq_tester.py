@@ -42,10 +42,10 @@ if __name__ == "__main__":
     print(hvo_seq.get_velocity_score_symmetry())
     #print(hvo_seq.get_velocity_intensity_mean_stdev())
 
-    hvo_seq.to_html_plot(show_figure=True, filename="temp.html")
+    #hvo_seq.to_html_plot(show_figure=True, filename="temp.html")
 
     hvo_seq_5part = hvo_seq.convert_to_alternate_mapping(tgt_drum_mapping=Groove_Toolbox_5Part_keymap)
-    hvo_seq_5part.to_html_plot(show_figure=True, filename="temp.html")
+    #hvo_seq_5part.to_html_plot(show_figure=True, filename="temp.html")
 
     #print(hvo_seq.get_bar_beat_hvo(hvo_str="hvo"))
     # Returns flattened hvo (or ho) vector
@@ -74,10 +74,13 @@ if __name__ == "__main__":
     o = hvo_seq.offsets
 
     # Reset voices
-    hvo_reset, hvo_out_voices = hvo_seq.reset_voices([0,1])
+    hvo_reset, hvo_out_voices = hvo_seq.reset_voices(voice_idx=[0,1])
     print(hvo_seq.hvo[:10,0])
     print(hvo_reset.hvo[:10,0])
     print(hvo_out_voices.hvo[:10,0])
+
+    # Remove random events
+    hvo_reset, hvo_out_voices = hvo_seq.remove_random_events()
 
 
     #STFT
