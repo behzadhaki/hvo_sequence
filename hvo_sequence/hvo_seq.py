@@ -61,7 +61,7 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.4.5"
+        self.__version = "0.5.0"
 
         self.__metadata = Metadata()
 
