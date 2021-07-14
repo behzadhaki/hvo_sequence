@@ -209,32 +209,18 @@ class HVO_Sequence(object):
         if isinstance(voice_idx, int):
             voice_idx = [voice_idx]
 
-        n_voices = len(self.drum_mapping)  # number of instruments in the mapping
-        n_timesteps = self.hvo.shape[0]  # number of frames
-
         # copy original hvo_seq into hvo_reset and hvo_reset_complementary
         hvo_reset = self.copy()  # copies the full hvo, each voice will be later set to 0
         hvo_reset_comp = self.copy_zero() # copies a zero hvo, each voice will be later set to its values in hvo_seq
 
-        # iterate voices in voice_idx list
-        for _voice_idx in voice_idx:
+        n_voices = len(self.drum_mapping)  # number of instruments in the mapping
 
-            if _voice_idx not in range(n_voices):
-                warnings.warn("Instrument index not in drum mapping")
-                return None
+        if np.all(np.isin(voice_idx, list(range(n_voices)))):
+            warnings.warn("Instrument index not in drum mapping")
+            return None
 
-            h_idx = _voice_idx  # hits
-            v_idx = _voice_idx + n_voices  # velocity
-            o_idx = _voice_idx + 2 * n_voices  # offset
-
-            hvo_reset.hvo[:, h_idx] = np.zeros(n_timesteps)
-            hvo_reset_comp.hvo[:,h_idx] = self.hvo[:,h_idx]
-
-            hvo_reset.hvo[:, v_idx] = np.zeros(n_timesteps)
-            hvo_reset_comp.hvo[:,v_idx] = self.hvo[:,v_idx]
-
-            hvo_reset.hvo[:, o_idx] = np.zeros(n_timesteps)
-            hvo_reset_comp.hvo[:,o_idx] = self.hvo[:,o_idx]
+        hvo_reset.hvo[:, voice_idx] = 0
+        hvo_reset_comp.hvo[:,voice_idx] = self.hvo[:,voice_idx]
 
         return hvo_reset, hvo_reset_comp
 
