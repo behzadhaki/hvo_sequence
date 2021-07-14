@@ -252,11 +252,11 @@ class HVO_Sequence(object):
         hits_to_remove_idx = (nonzero_hits_idx[0][~(pd>thres)], nonzero_hits_idx[1][~(pd>thres)])
 
         # remove hits with associated probability distribution (pd) value lower than threshold
-        hits_to_keep = np.zeros(hits.shape)
+        hits_to_keep, hits_to_remove = np.zeros(hits.shape), np.zeros(hits.shape)
+
         hits_to_keep[tuple(hits_to_keep_idx)] = 1
         hvo_reset.hvo[:, 0:n_voices] = hits_to_keep
 
-        hits_to_remove = np.zeros(hits.shape)
         hits_to_remove[tuple(hits_to_remove_idx)] = 1
         hvo_reset_comp.hvo[:, 0:n_voices] = hits_to_remove
 
