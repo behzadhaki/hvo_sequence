@@ -201,7 +201,6 @@ class HVO_Sequence(object):
         @return hvo_reset_comp:             returns new hvo_sequence object with all voices set to 0 except the
                                             voices in voice_idx
         """
-        print(voice_idx)
         if voice_idx is None:
             warnings.warn("Pass a voice index or a list of voice indexes to be reset")
             return None
