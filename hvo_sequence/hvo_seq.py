@@ -19,6 +19,7 @@ from hvo_sequence.utils import _weight_groove, _reduce_part, fuzzy_Hamming_dista
 from hvo_sequence.utils import _get_kick_and_snare_syncopations, get_monophonic_syncopation
 from hvo_sequence.utils import get_weak_to_strong_ratio, _getmicrotiming_event_profile_1bar
 from hvo_sequence.utils import onset_strength_spec, reduce_f_bands_in_spec, detect_onset, map_onsets_to_grid, logf_stft
+from hvo_sequence.utils import get_hvo_idxs_for_voice
 
 from hvo_sequence.custom_dtypes import Tempo, Time_Signature, Metadata
 from hvo_sequence.drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
@@ -61,7 +62,7 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.5.1"
+        self.__version = "0.5.2"
 
         self.__metadata = Metadata()
 
@@ -220,7 +221,8 @@ class HVO_Sequence(object):
             return None
 
         hvo_reset.hvo[:, voice_idx] = 0
-        hvo_reset_comp.hvo[:,voice_idx] = self.hvo[:,voice_idx]
+        h_idx, v_idx, o_idx = get_hvo_idxs_for_voice(list(voice_idx), n_voices)
+        hvo_reset_comp.hvo[:, h_idx + v_idx + o_idx] = self.hvo[:, h_idx + v_idx + o_idx]
 
         return hvo_reset, hvo_reset_comp
 
