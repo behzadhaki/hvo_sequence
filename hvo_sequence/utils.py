@@ -1,5 +1,5 @@
 import numpy as np
-from hvo_sequence.custom_dtypes import Tempo, Time_Signature
+from .custom_dtypes import Tempo, Time_Signature
 import math
 import scipy.signal
 import librosa

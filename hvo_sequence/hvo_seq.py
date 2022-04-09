@@ -14,19 +14,19 @@ import math
 import copy
 import random
 
-from hvo_sequence.utils import is_power_of_two, find_pitch_and_tag, cosine_similarity, cosine_distance
-from hvo_sequence.utils import _weight_groove, _reduce_part, fuzzy_Hamming_distance
-from hvo_sequence.utils import _get_kick_and_snare_syncopations, get_monophonic_syncopation
-from hvo_sequence.utils import get_weak_to_strong_ratio, _getmicrotiming_event_profile_1bar
-from hvo_sequence.utils import onset_strength_spec, reduce_f_bands_in_spec, detect_onset, map_onsets_to_grid, logf_stft
-from hvo_sequence.utils import get_hvo_idxs_for_voice
+from .utils import is_power_of_two, find_pitch_and_tag, cosine_similarity, cosine_distance
+from .utils import _weight_groove, _reduce_part, fuzzy_Hamming_distance
+from .utils import _get_kick_and_snare_syncopations, get_monophonic_syncopation
+from .utils import get_weak_to_strong_ratio, _getmicrotiming_event_profile_1bar
+from .utils import onset_strength_spec, reduce_f_bands_in_spec, detect_onset, map_onsets_to_grid, logf_stft
+from .utils import get_hvo_idxs_for_voice
 
-from hvo_sequence.custom_dtypes import Tempo, Time_Signature, Metadata
-from hvo_sequence.drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
+from .custom_dtypes import Tempo, Time_Signature, Metadata
+from .drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
 
-from hvo_sequence.metrical_profiles import WITEK_SYNCOPATION_METRICAL_PROFILE_4_4_16th_NOTE
-from hvo_sequence.metrical_profiles import Longuet_Higgins_METRICAL_PROFILE_4_4_16th_NOTE
-from hvo_sequence.metrical_profiles import RHYTHM_SALIENCE_PROFILE_4_4_16th_NOTE
+from .metrical_profiles import WITEK_SYNCOPATION_METRICAL_PROFILE_4_4_16th_NOTE
+from .metrical_profiles import Longuet_Higgins_METRICAL_PROFILE_4_4_16th_NOTE
+from .metrical_profiles import RHYTHM_SALIENCE_PROFILE_4_4_16th_NOTE
 
 from bokeh.plotting import figure
 
@@ -100,7 +100,7 @@ class HVO_Sequence(object):
     def metadata(self, metadata_instance):
         assert isinstance(
             metadata_instance, Metadata), "Expected a Metadata Instance but received {}. " \
-                                          "Use a Metadata instance available in hvo_sequence.custom_dtypes".format(
+                                          "Use a Metadata instance available in .custom_dtypes".format(
             type(metadata_instance))
         self.__metadata = metadata_instance
 
@@ -2716,7 +2716,7 @@ def empty_like(other_hvo_sequence):
     :return:
     """
     new_hvo_seq = HVO_Sequence()
-    other_dict = copy.deepcopy(other_hvo_sequence.__dict__)
+    other_dict = copy.deepcopy(other_.__dict__)
     new_hvo_seq.__dict__.update(other_dict)
     new_hvo_seq.remove_hvo()
     return new_hvo_seq
@@ -2724,7 +2724,7 @@ def empty_like(other_hvo_sequence):
 
 def zero_like(other_hvo_sequence):
     new_hvo_seq = HVO_Sequence()
-    other_dict = copy.deepcopy(other_hvo_sequence.__dict__)
+    other_dict = copy.deepcopy(other_.__dict__)
     new_hvo_seq.__dict__.update(other_dict)
     if new_hvo_seq.hvo is not None:
         new_hvo_seq.hvo = np.zeros_like(new_hvo_seq.hvo)

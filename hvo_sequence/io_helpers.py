@@ -4,8 +4,8 @@ import soundfile as sf
 import numpy as np
 import pretty_midi
 
-from hvo_sequence.utils import find_nearest, find_pitch_and_tag
-from hvo_sequence.hvo_seq import HVO_Sequence
+from .utils import find_nearest, find_pitch_and_tag
+from .hvo_seq import HVO_Sequence
 
 
 def empty_like(other_hvo_sequence):
