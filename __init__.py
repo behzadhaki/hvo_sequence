@@ -1,3 +1,4 @@
-from .hvo_sequence import HVO_Sequence, ROLAND_REDUCED_MAPPING
+from GMD2HVO_PreProcessing.hvo_sequence.hvo_sequence.io_helpers import note_sequence_to_hvo_sequence
+from .hvo_sequence import HVO_Sequence, ROLAND_REDUCED_MAPPING, note_sequence_to_hvo_sequence
 
-__all__ = [HVO_Sequence, ROLAND_REDUCED_MAPPING]
+__all__ = [HVO_Sequence, ROLAND_REDUCED_MAPPING, note_sequence_to_hvo_sequence]
