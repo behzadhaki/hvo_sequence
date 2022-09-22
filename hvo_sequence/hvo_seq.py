@@ -1938,6 +1938,7 @@ class HVO_Sequence(object):
         return lowness, midness, hiness
 
     def get_velocity_score_symmetry(self):
+        # fixme the implementation doesnt match the description
         # Get total symmetry of pattern. Defined as the number of onsets that appear in the same positions in the first
         # and second halves of the pattern, divided by total number of onsets in the pattern.
         # symmetry is calculated using velocity section of hvo
@@ -2109,7 +2110,7 @@ class HVO_Sequence(object):
         return math.sqrt(pow(sync, 2) + pow(hit_density, 2))
 
     # ######################################################################
-    #      Rhythmic Features::Autocorrelation Related from GrooveToolbox
+        #      Rhythmic Features::Autocorrelation Related from GrooveToolbox
     #
     #        The following code is mostly from the GrooveToolbox
     #              https://github.com/fredbru/GrooveToolbox
