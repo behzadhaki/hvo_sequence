@@ -12,12 +12,14 @@ from scipy import stats
 from scipy.signal import find_peaks
 import math
 import copy
+import random
 
 from hvo_sequence.utils import is_power_of_two, find_pitch_and_tag, cosine_similarity, cosine_distance
 from hvo_sequence.utils import _weight_groove, _reduce_part, fuzzy_Hamming_distance
 from hvo_sequence.utils import _get_kick_and_snare_syncopations, get_monophonic_syncopation
 from hvo_sequence.utils import get_weak_to_strong_ratio, _getmicrotiming_event_profile_1bar
 from hvo_sequence.utils import onset_strength_spec, reduce_f_bands_in_spec, detect_onset, map_onsets_to_grid, logf_stft
+from hvo_sequence.utils import get_hvo_idxs_for_voice
 
 from hvo_sequence.custom_dtypes import Tempo, Time_Signature, Metadata
 from hvo_sequence.drum_mappings import Groove_Toolbox_5Part_keymap, Groove_Toolbox_3Part_keymap
@@ -60,7 +62,7 @@ class HVO_Sequence(object):
         PATCH version when you make backwards compatible bug fixes.
         """
 
-        self.__version = "0.4.5"
+        self.__version = "0.5.2"
 
         self.__metadata = Metadata()
 
@@ -200,7 +202,6 @@ class HVO_Sequence(object):
         @return hvo_reset_comp:             returns new hvo_sequence object with all voices set to 0 except the
                                             voices in voice_idx
         """
-
         if voice_idx is None:
             warnings.warn("Pass a voice index or a list of voice indexes to be reset")
             return None
@@ -209,34 +210,61 @@ class HVO_Sequence(object):
         if isinstance(voice_idx, int):
             voice_idx = [voice_idx]
 
-        n_voices = len(self.drum_mapping)  # number of instruments in the mapping
-        n_timesteps = self.hvo.shape[0]  # number of frames
-
         # copy original hvo_seq into hvo_reset and hvo_reset_complementary
         hvo_reset = self.copy()  # copies the full hvo, each voice will be later set to 0
         hvo_reset_comp = self.copy_zero() # copies a zero hvo, each voice will be later set to its values in hvo_seq
 
-        # iterate voices in voice_idx list
-        for _voice_idx in voice_idx:
+        n_voices = len(self.drum_mapping)  # number of instruments in the mapping
 
-            if _voice_idx not in range(n_voices):
-                warnings.warn("Instrument index not in drum mapping")
-                return None
+        if not np.all(np.isin(voice_idx, list(range(n_voices)))):
+            warnings.warn("Instrument index not in drum mapping")
+            return None
 
-            h_idx = _voice_idx  # hits
-            v_idx = _voice_idx + n_voices  # velocity
-            o_idx = _voice_idx + 2 * n_voices  # offset
-
-            hvo_reset.hvo[:, h_idx] = np.zeros(n_timesteps)
-            hvo_reset_comp.hvo[:,h_idx] = self.hvo[:,h_idx]
-
-            hvo_reset.hvo[:, v_idx] = np.zeros(n_timesteps)
-            hvo_reset_comp.hvo[:,v_idx] = self.hvo[:,v_idx]
-
-            hvo_reset.hvo[:, o_idx] = np.zeros(n_timesteps)
-            hvo_reset_comp.hvo[:,o_idx] = self.hvo[:,o_idx]
+        hvo_reset.hvo[:, voice_idx] = 0
+        h_idx, v_idx, o_idx = get_hvo_idxs_for_voice(list(voice_idx), n_voices)
+        hvo_reset_comp.hvo[:, h_idx + v_idx + o_idx] = self.hvo[:, h_idx + v_idx + o_idx]
 
         return hvo_reset, hvo_reset_comp
+
+    def remove_random_events(self, thres_range=(0.4,0.6)):
+        """
+        Removes random hvo events sampling from a uniform probability distribution. A threshold is sampled from the
+        threshold range. Hits with associated probability distribution value less or equal than this threshold are
+        removed.
+        @param thres_range:                 threshold range
+        @return hvo_reset:                  returns new hvo_sequence object without the removed events
+        @return hvo_reset_comp:             returns new hvo_sequence object with the removed events
+        """
+        hvo_reset = self.copy() # non_empty copying so that offset and velocity info is kept
+        hvo_reset_comp = self.copy()
+
+        # hvo_seq hvo hits 32x9 matrix
+        n_voices = len(self.drum_mapping)
+        hits = self.hvo[:, 0:n_voices]
+
+        # uniform probability distribution over nonzero hits
+        nonzero_hits_idx = np.nonzero(hits)
+        pd = np.random.uniform(size=len(nonzero_hits_idx[0]))
+
+        # get threshold from range
+        thres = random.uniform(*thres_range)
+        # sample hits from probability distribution
+        hits_to_keep_idx = (nonzero_hits_idx[0][pd>thres], nonzero_hits_idx[1][pd>thres])
+        hits_to_remove_idx = (nonzero_hits_idx[0][~(pd>thres)], nonzero_hits_idx[1][~(pd>thres)])
+
+        # remove hits with associated probability distribution (pd) value lower than threshold
+        hits_to_keep, hits_to_remove = np.zeros(hits.shape), np.zeros(hits.shape)
+
+        hits_to_keep[tuple(hits_to_keep_idx)] = 1
+        hvo_reset.hvo[:, 0:n_voices] = hits_to_keep
+
+        hits_to_remove[tuple(hits_to_remove_idx)] = 1
+        hvo_reset_comp.hvo[:, 0:n_voices] = hits_to_remove
+
+        return hvo_reset, hvo_reset_comp
+
+
+
 
     def flatten_voices(self, offset_aggregator_modes=3, velocity_aggregator_modes=1, get_velocities=True, reduce_dim=False, voice_idx=2):
 
